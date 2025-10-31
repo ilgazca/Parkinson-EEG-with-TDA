@@ -5,7 +5,7 @@ from scipy.signal import decimate
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 import os
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from gtda.time_series import SingleTakensEmbedding
 from gtda.time_series import TakensEmbedding
 
@@ -185,7 +185,18 @@ def fit_embedder(embedder: SingleTakensEmbedding, y: np.ndarray, verbose: bool=T
     """
     Fits a Takens embedder and displays optimal search parameters.
     """
-    y_embedded = embedder.fit_transform(y)
+    try:
+        y_embedded = embedder.fit_transform(y)
+    except ValueError as e:
+        if "Expected n_neighbors <= n_samples" in str(e):
+            raise ValueError(
+                "The input time series is likely too short for the Takens embedding "
+                "parameter search. Please provide a longer time series or "
+                "adjust the 'dimension' and 'time_delay' parameters of the "
+                "SingleTakensEmbedding."
+            ) from e
+        else:
+            raise
 
     if verbose:
         print(f"Shape of embedded time series: {y_embedded.shape}")
@@ -228,6 +239,7 @@ def filter_persistence_diagram(diagram_3d: np.ndarray, lifespan_threshold: float
 
     # Reshape back to 3D for compatibility with plotting functions
     return filtered_diagram_2d[None, :, :]
+
 
 def extract_features(diagram: np.ndarray, homology_dimensions=[0, 1, 2], verbose: bool = True) -> dict:
     """
@@ -291,3 +303,139 @@ def extract_features(diagram: np.ndarray, homology_dimensions=[0, 1, 2], verbose
             print("\tNo features were extracted.")
 
     return features
+
+def sample_time_series_slices(
+    time_series: pd.Series,
+    slice_length: float,
+    n_slices: Optional[int] = None,
+    gap: Optional[float] = None,
+    arbitrary: bool = False,
+    random_seed: Optional[int] = None,
+) -> List[pd.Series]:
+    """
+    Samples slices from a time series, either systematically or arbitrarily.
+
+    Args:
+        time_series (pd.Series): The input time series data, with a time index.
+        slice_length (float): The desired length of each slice in seconds.
+        n_slices (Optional[int]): The number of slices to extract.
+            - For systematic sampling, slices are distributed evenly.
+            - For arbitrary sampling, this many random slices are chosen.
+            - Must be provided if 'arbitrary' is True.
+        gap (Optional[float]): The time gap in seconds between the end of one
+            slice and the start of the next. Used only for systematic sampling.
+            Cannot be used with 'n_slices'.
+        arbitrary (bool): If True, slices are chosen randomly (but without
+            overlap). If False (default), slices are chosen systematically.
+        random_seed (Optional[int]): A seed for the random number generator
+            to ensure reproducibility of arbitrary sampling.
+
+    Returns:
+        List[pd.Series]: A list containing the extracted time series slices.
+
+    Raises:
+        ValueError: If input parameters are invalid or conflicting.
+        TypeError: If 'time_series' is not a pandas Series with a time index.
+    """
+    if not isinstance(time_series, pd.Series) or not isinstance(time_series.index, pd.Index):
+        raise TypeError("Input 'time_series' must be a pandas Series with a time index.")
+
+    # --- Calculate Sampling Frequency and Convert Seconds to Points ---
+    if len(time_series.index) > 1:
+        fs = 1 / (time_series.index[1] - time_series.index[0])
+    else:
+        fs = 1.0 # Assume fs of 1.0 if only one point
+        
+    slice_length_pts = int(slice_length * fs)
+    gap_pts = int(gap * fs) if gap is not None else None
+
+    total_len = len(time_series)
+    if not (0 < slice_length_pts <= total_len):
+        raise ValueError(
+            f"slice_length ({slice_length}s) results in a slice length ({slice_length_pts} points) "
+            f"that is not positive or exceeds the time series length ({total_len} points)."
+        )
+
+    # --- Parameter Validation ---
+    if arbitrary:
+        if gap is not None:
+            raise ValueError("Cannot specify 'gap' when 'arbitrary' is True.")
+        if n_slices is None:
+            raise ValueError("Must specify 'n_slices' when 'arbitrary' is True.")
+    else:  # Systematic
+        if n_slices is not None and gap is not None:
+            raise ValueError("Cannot specify both 'n_slices' and 'gap' for systematic sampling.")
+        if n_slices is None and gap is None:
+            raise ValueError("Must specify either 'n_slices' or 'gap' for systematic sampling.")
+
+    start_indices = []
+    
+    # --- Slicing Logic ---
+    if arbitrary:
+        print("--- Performing Arbitrary Slicing ---")
+        rng = np.random.default_rng(random_seed)
+        
+        possible_starts = list(range(total_len - slice_length_pts + 1))
+        
+        max_possible_slices = total_len // slice_length_pts
+        if n_slices > max_possible_slices:
+            print(
+                f"Warning: Cannot fit {n_slices} non-overlapping slices. "
+                f"Reducing to the maximum possible: {max_possible_slices}."
+            )
+            n_slices = max_possible_slices
+
+        for _ in range(n_slices):
+            if not possible_starts:
+                print("Warning: Ran out of possible locations for slices. Generated fewer slices than requested.")
+                break
+            
+            start = rng.choice(possible_starts)
+            start_indices.append(start)
+            
+            forbidden_start = start - slice_length_pts + 1
+            forbidden_end = start + slice_length_pts - 1
+            possible_starts = [
+                idx for idx in possible_starts 
+                if not (forbidden_start <= idx <= forbidden_end)
+            ]
+        start_indices.sort()
+
+    else: # Systematic
+        print("--- Performing Systematic Slicing ---")
+        if n_slices is not None:
+            if n_slices * slice_length_pts > total_len:
+                new_n_slices = total_len // slice_length_pts
+                print(
+                    f"Warning: Cannot fit {n_slices} slices of length {slice_length}s. "
+                    f"Reducing to {new_n_slices} evenly spaced slices."
+                )
+                n_slices = new_n_slices
+            
+            if n_slices > 0:
+                start_indices = np.linspace(0, total_len - slice_length_pts, n_slices, dtype=int)
+
+        elif gap_pts is not None:
+            if total_len >= slice_length_pts:
+                num_slices = (total_len - slice_length_pts) // (slice_length_pts + gap_pts) + 1
+                start_indices = [i * (slice_length_pts + gap_pts) for i in range(num_slices)]
+
+    if not list(start_indices):
+        print("Warning: No slices were generated with the given parameters.")
+        return []
+
+    # --- Create Slices and Print Summary ---
+    slices = [time_series.iloc[i : i + slice_length_pts] for i in start_indices]
+
+    print("\n--- Time Series Slicing Summary ---")
+    print(f"Number of slices generated: {len(slices)}")
+    print(f"Length of each slice: {slice_length}s ({slice_length_pts} points at {fs:.2f} Hz)")
+    if slices:
+        print("Time intervals of slices:")
+        for i, s in enumerate(slices):
+            if not s.empty:
+                start_time = s.index[0]
+                end_time = s.index[-1]
+                print(f"  - Slice {i+1}: {start_time:.4f}s to {end_time:.4f}s")
+
+    return slices
