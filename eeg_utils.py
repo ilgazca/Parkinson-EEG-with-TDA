@@ -65,7 +65,7 @@ def downsample_eeg_dataframe(df: pd.DataFrame, original_fs: float, target_fs: fl
     if plot:
         # Plot the new, downsampled data
         # Limiting to first 500 samples for better visualization, adjust as needed
-        plot_data = df_downsampled.iloc[:min(500, len(df_downsampled))]
+        plot_data = df_downsampled.iloc[:min(125, len(df_downsampled))]
         plot_data.plot(
             subplots=True,
             layout=(len(plot_data.columns), 1) if len(plot_data.columns) > 0 else (1,1), # Adjust layout dynamically
