@@ -439,3 +439,57 @@ def sample_time_series_slices(
                 print(f"  - Slice {i+1}: {start_time:.4f}s to {end_time:.4f}s")
 
     return slices
+
+
+def pad_diagrams(diagrams):
+    """Pad persistence diagrams separately for each homology dimension."""
+
+    # Extract diagrams if nested
+    extracted = []
+    for d in diagrams:
+        if isinstance(d, np.ndarray):
+            extracted.append(np.squeeze(d) if d.ndim > 2 else d)
+        else:
+            extracted.append(d)
+
+    n_samples = len(extracted)
+
+    # Find all unique homology dimensions
+    all_dims = set()
+    for diagram in extracted:
+        all_dims.update(diagram[:, 2])
+    all_dims = sorted(all_dims)
+
+    # For each homology dimension, find max number of points
+    max_points_per_dim = {}
+    for dim in all_dims:
+        max_points = max(
+            np.sum(diagram[:, 2] == dim) for diagram in extracted
+        )
+        max_points_per_dim[dim] = max_points
+
+    # Total points needed
+    total_points = sum(max_points_per_dim.values())
+
+    # Create padded array
+    padded = np.zeros((n_samples, total_points, 3))
+
+    for i, diagram in enumerate(extracted):
+        idx = 0
+        for dim in all_dims:
+            # Extract points for this homology dimension
+            mask = diagram[:, 2] == dim
+            points_in_dim = diagram[mask]
+            n_points = len(points_in_dim)
+
+            # Add these points
+            padded[i, idx:idx + n_points, :] = points_in_dim
+
+            # Pad remaining points with [0, 0, dim] (trivial pairs)
+            n_padding = max_points_per_dim[dim] - n_points
+            if n_padding > 0:
+                padded[i, idx + n_points:idx + max_points_per_dim[dim], :] = [0, 0, dim]
+
+            idx += max_points_per_dim[dim]
+
+    return padded
