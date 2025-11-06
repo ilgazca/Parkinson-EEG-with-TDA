@@ -1,13 +1,35 @@
 
 import pandas as pd
 import numpy as np
-from scipy.signal import decimate
+from scipy.signal import decimate, butter, filtfilt
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 import os
 from typing import Tuple, Optional, List
 from gtda.time_series import SingleTakensEmbedding
 from gtda.time_series import TakensEmbedding
+
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    """
+    Applies a Butterworth bandpass filter to a time series.
+
+    Args:
+        data (np.ndarray or pd.Series): The input time series data.
+        lowcut (float): The lower frequency bound.
+        highcut (float): The upper frequency bound.
+        fs (int): The sampling frequency of the data.
+        order (int, optional): The order of the filter. Defaults to 5.
+
+    Returns:
+        np.ndarray: The filtered time series.
+    """
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    y = filtfilt(b, a, data)
+    return y
 
 def downsample_eeg_dataframe(df: pd.DataFrame, original_fs: float, target_fs: float, plot: bool = True) -> pd.DataFrame:
     """
