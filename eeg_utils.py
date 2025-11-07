@@ -200,7 +200,7 @@ def mat_to_dataframe(file_path: str) -> Optional[Tuple[pd.DataFrame, pd.Series, 
     print(f"\nSuccessfully extracted left LFP channel: '{left_lfp_col}'")
     print(f"Successfully extracted right LFP channel: '{right_lfp_col}'")
 
-    return df, left_lfp, right_lfp
+    return df, left_lfp, right_lfp, left_lfp_col, right_lfp_col
 
 
 def fit_embedder(embedder: SingleTakensEmbedding, y: np.ndarray, verbose: bool=True) -> np.ndarray:
