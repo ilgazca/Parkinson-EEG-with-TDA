@@ -1,0 +1,16 @@
+--- sub-jyC0j3_ses-PeriOp_task-HoldR_acq-MedOff_run-1_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 300.000000 300.000000
+     HoldR 304.566381  70.669833 375.236214
+     HoldR 399.999650  71.657877 471.657526
+     HoldR 493.992122  72.853355 566.845477
+     HoldR 601.027127  69.050054 670.077181
+     HoldR 690.169364  84.728135 774.897499
+
+
+--- sub-jyC0j3_ses-PeriOp_task-HoldR_acq-MedOn_run-1_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 300.000000 300.000000
+     HoldB 300.095000 201.347742 501.442742
+     HoldR 530.513407 167.013093 697.526500
+     HoldR 723.786499  81.679199 805.465697

@@ -41,19 +41,22 @@ from gtda.diagrams import (
 )
 
 
-def load_event_times(event_file):
+def load_event_times(event_file, med_state=None):
     """
-    Load event times from a text file.
+    Load event times from a text file, selecting the correct section based on medication state.
 
     Args:
         event_file (str): Path to event times file
+        med_state (str): Medication state ('medOn', 'medOff', or None for auto-detect)
 
     Returns:
-        dict: Dictionary containing 'hold' and 'resting' event times as lists
+        dict: Dictionary containing 'hold' and 'resting' event information as lists of dicts
+              Each dict has 'onset', 'end', and 'duration' keys
     """
     print(f"\n--- Loading Event Times from {event_file} ---")
+    if med_state:
+        print(f"Looking for {med_state} events...")
 
-    # Try reading as simple list of times
     try:
         with open(event_file, 'r') as f:
             lines = f.readlines()
@@ -61,28 +64,102 @@ def load_event_times(event_file):
         # Parse the file - assuming format with labels
         events = {'hold': [], 'resting': []}
 
+        # Track which section we're in (MedOn or MedOff)
+        current_section = None
+        in_correct_section = False
+
         for line in lines:
             line = line.strip()
-            if not line or line.startswith('#'):
+
+            # Check for section headers (e.g., "--- sub-i4oK0F-HoldL-MedOff_run-1_events.tsv ---")
+            if line.startswith('---') and 'events.tsv' in line.lower():
+                # Determine which section this is
+                if 'medon' in line.lower():
+                    current_section = 'medOn'
+                elif 'medoff' in line.lower():
+                    current_section = 'medOff'
+
+                # Check if this is the section we want
+                if med_state is None:
+                    # If no med_state specified, use the first section found
+                    in_correct_section = True
+                elif med_state.lower().replace('_', '').replace('-', '') == current_section.lower():
+                    in_correct_section = True
+                    print(f"✓ Found {current_section} section")
+                else:
+                    in_correct_section = False
+                continue
+
+            # Skip empty lines, comments, and header lines
+            if not line or line.startswith('#') or line.startswith('trial_type'):
+                continue
+
+            # Only process lines if we're in the correct section
+            if not in_correct_section:
                 continue
 
             parts = line.split()
-            if len(parts) >= 2:
-                time = float(parts[0])
-                label = parts[1].lower()
-
-                if 'hold' in label:
-                    events['hold'].append(time)
-                elif 'rest' in label:
-                    events['resting'].append(time)
-            else:
-                # If just a number, treat as hold event
+            if len(parts) >= 4:
+                # TSV format with all columns (trial_type onset duration end)
                 try:
-                    events['hold'].append(float(line))
+                    trial_type = parts[0]
+                    onset = float(parts[1])
+                    duration = float(parts[2])
+                    end = float(parts[3])
+
+                    event_info = {
+                        'onset': onset,
+                        'duration': duration,
+                        'end': end
+                    }
+
+                    # Map trial types to event categories
+                    if 'hold' in trial_type.lower():
+                        events['hold'].append(event_info)
+                    elif 'rest' in trial_type.lower():
+                        events['resting'].append(event_info)
+                    continue
+                except (ValueError, IndexError):
+                    pass
+
+            if len(parts) >= 2:
+                # Try simple format: time label (fallback to onset-only)
+                try:
+                    onset = float(parts[0])
+                    label = parts[1].lower()
+
+                    event_info = {
+                        'onset': onset,
+                        'duration': None,
+                        'end': None
+                    }
+
+                    if 'hold' in label:
+                        events['hold'].append(event_info)
+                    elif 'rest' in label:
+                        events['resting'].append(event_info)
                 except ValueError:
                     continue
 
-        print(f"Found {len(events['hold'])} hold events and {len(events['resting'])} resting events")
+        print(f"✓ Found {len(events['hold'])} hold events and {len(events['resting'])} resting events")
+
+        # Print the event times
+        if events['hold']:
+            print(f"\nHold events:")
+            for i, event in enumerate(events['hold'], 1):
+                if event['end'] is not None:
+                    print(f"  {i}. [{event['onset']:.2f}s - {event['end']:.2f}s] (duration: {event['duration']:.2f}s)")
+                else:
+                    print(f"  {i}. onset: {event['onset']:.2f}s")
+
+        if events['resting']:
+            print(f"\nResting events:")
+            for i, event in enumerate(events['resting'], 1):
+                if event['end'] is not None:
+                    print(f"  {i}. [{event['onset']:.2f}s - {event['end']:.2f}s] (duration: {event['duration']:.2f}s)")
+                else:
+                    print(f"  {i}. onset: {event['onset']:.2f}s")
+
         return events
 
     except Exception as e:
@@ -90,33 +167,76 @@ def load_event_times(event_file):
         sys.exit(1)
 
 
-def slice_signal_by_events(signal, event_times, fs, slice_length=60):
+def slice_signal_by_events(signal, event_times, fs, slice_length=60, event_type="event"):
     """
-    Slice a signal based on event times.
+    Slice a signal based on event times, creating centered windows when event duration is available.
 
     Args:
         signal (np.ndarray): The signal to slice
-        event_times (list): List of event start times in seconds
+        event_times (list): List of event dicts with 'onset', 'end', 'duration' keys
         fs (float): Sampling frequency
         slice_length (float): Length of each slice in seconds
+        event_type (str): Type of event (for logging purposes)
 
     Returns:
         list: List of signal slices
     """
     slices = []
 
-    for start_time_sec in event_times:
-        start_index = int(start_time_sec * fs)
-        end_index = int((start_time_sec + slice_length) * fs)
+    print(f"\n  Slicing {event_type} events (slice length: {slice_length}s):")
 
-        # Ensure indices are within bounds
+    for i, event in enumerate(event_times, 1):
+        # If event has end time, calculate centered window
+        if event['end'] is not None and event['onset'] is not None:
+            event_duration = event['end'] - event['onset']
+            middle_time = event['onset'] + event_duration / 2.0
+
+            # Center the slice window around the middle of the event
+            start_time_sec = middle_time - slice_length / 2.0
+            end_time_sec = middle_time + slice_length / 2.0
+
+            # Ensure the centered window doesn't go outside the event boundaries
+            # (though it should be fine since events are longer than slice_length)
+            if start_time_sec < event['onset']:
+                start_time_sec = event['onset']
+                end_time_sec = event['onset'] + slice_length
+            elif end_time_sec > event['end']:
+                end_time_sec = event['end']
+                start_time_sec = event['end'] - slice_length
+        else:
+            # Fallback to onset-based slicing if no end time
+            start_time_sec = event['onset']
+            end_time_sec = event['onset'] + slice_length
+
+        start_index = int(start_time_sec * fs)
+        end_index = int(end_time_sec * fs)
+
+        # Ensure indices are within signal bounds
+        original_start = start_time_sec
+        original_end = end_time_sec
+
         if start_index < 0:
             start_index = 0
         if end_index > len(signal):
             end_index = len(signal)
 
+        actual_start = start_index / fs
+        actual_end = end_index / fs
+
         slice_data = signal[start_index:end_index]
         slices.append(slice_data)
+
+        # Print interval information
+        if event['end'] is not None:
+            if actual_end < original_end or actual_start > original_start:
+                print(f"    {i}. [{actual_start:.2f}s - {actual_end:.2f}s] centered in event [{event['onset']:.2f}s - {event['end']:.2f}s] (truncated, {len(slice_data)} samples)")
+            else:
+                print(f"    {i}. [{start_time_sec:.2f}s - {end_time_sec:.2f}s] centered in event [{event['onset']:.2f}s - {event['end']:.2f}s] ({len(slice_data)} samples)")
+        else:
+            if actual_end < original_end:
+                print(f"    {i}. [{actual_start:.2f}s - {actual_end:.2f}s] (truncated, {len(slice_data)} samples)")
+            else:
+                print(f"    {i}. [{start_time_sec:.2f}s - {end_time_sec:.2f}s] ({len(slice_data)} samples)")
 
     return slices
 
@@ -190,13 +310,16 @@ def process_pipeline(mat_file, event_times_file, output_folder, args):
     # STEP 4: Load Event Times and Slice
     # ========================================================================
     print(f"\n[4/8] Loading event times and slicing data...")
-    events = load_event_times(event_times_file)
+    events = load_event_times(event_times_file, med_state=args.prefix)
 
     # Slice the signals
-    left_hold = slice_signal_by_events(left_downsampled, events['hold'], args.target_fs, args.slice_length)
-    right_hold = slice_signal_by_events(right_downsampled, events['hold'], args.target_fs, args.slice_length)
-    left_resting = slice_signal_by_events(left_downsampled, events['resting'], args.target_fs, args.slice_length)
-    right_resting = slice_signal_by_events(right_downsampled, events['resting'], args.target_fs, args.slice_length)
+    print(f"\n--- Slicing Left Channel ({left_name}) ---")
+    left_hold = slice_signal_by_events(left_downsampled, events['hold'], args.target_fs, args.slice_length, event_type="left hold")
+    left_resting = slice_signal_by_events(left_downsampled, events['resting'], args.target_fs, args.slice_length, event_type="left resting")
+
+    print(f"\n--- Slicing Right Channel ({right_name}) ---")
+    right_hold = slice_signal_by_events(right_downsampled, events['hold'], args.target_fs, args.slice_length, event_type="right hold")
+    right_resting = slice_signal_by_events(right_downsampled, events['resting'], args.target_fs, args.slice_length, event_type="right resting")
 
     print(f"✓ Created slices: {len(left_hold)} hold, {len(left_resting)} resting per channel")
 

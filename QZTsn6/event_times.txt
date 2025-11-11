@@ -1,0 +1,19 @@
+--- sub-QZTsn6_ses-PeriOp_task-HoldL_acq-MedOff_run-1_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 300.000000 300.000000
+   bad_lfp 137.520985   4.800040 142.321025
+     HoldL 309.732500  73.931500 383.664000
+     HoldL 418.570000  62.766000 481.336000
+     HoldL 506.758000  63.806500 570.564500
+   bad_lfp 585.512797   4.901449 590.414246
+     HoldL 600.328000  63.771000 664.099000
+     HoldL 683.684837  57.692835 741.377672
+
+
+--- sub-QZTsn6_ses-PeriOp_task-HoldL_acq-MedOn_run-1_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 281.000000 281.000000
+     HoldL 281.004500  86.487000 367.491500
+     HoldL 393.188000  82.436000 475.624000
+     HoldL 492.432000 150.980000 643.412000
+     HoldL 661.537929  73.292558 734.830487
