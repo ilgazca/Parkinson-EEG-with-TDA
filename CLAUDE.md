@@ -255,3 +255,4 @@ The main objective is to **distinguish between medOn and medOff states** in Park
 - Most functions in `eeg_utils.py` have comprehensive docstrings and error handling
 - Event times stored in subject directories as `.txt` files (e.g., `event_times.txt`)
 - For aggregation: use `--method mean` for standard analysis, `--method full --include-variability` for comprehensive analysis
+- Always push .pkl files when doing a git push
