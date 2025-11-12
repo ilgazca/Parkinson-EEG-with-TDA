@@ -44,6 +44,13 @@ The analysis follows this workflow:
 - **batch_aggregate.py**: Batch processing for all patients
   - Runs aggregation on all patient folders automatically
   - Usage: `python batch_aggregate.py --method mean`
+- **comparison_pipeline.ipynb**: **Main comparison notebook for analyzing aggregated features**
+  - Part 1: Multi-patient analysis with summary statistics across all patients
+  - Part 2: Two-patient comparison pipeline with flexible parameters
+  - Compares medOn vs medOff states across dominant/non-dominant hemispheres
+  - Handles both scalar features (entropy, counts, lifespans) and array features (landscapes, Betti curves, heat kernels)
+  - Includes visualization capabilities and statistical comparisons
+  - Usage: Set `patient1` and `patient2` variables to compare any two patients
 - **example_load_aggregated.py**: Example script showing how to load and analyze aggregated features
 - **EEG_TDA_Pipeline.py**: Python script version of the full pipeline (may be outdated)
 - **EEG_TDA_Pipeline.ipynb**: Main analysis notebook with complete TDA workflow
@@ -64,11 +71,35 @@ The analysis follows this workflow:
 - Subject data stored in subdirectories (e.g., `i4oK0F/`, `QZTsn6/`)
 - Raw .mat files in `sub-0cGdk9_HoldL_MedOff_run1_LFP_Hilbert/` (gitignored)
 - Processed data saved as pickle files per patient:
-  - Time series slices: `medOff_left_hold.pkl`, `medOff_left_resting.pkl`, etc.
-  - Persistence diagrams: `medOff_left_hold_diagrams.pkl`, `medOn_left_hold_diagrams.pkl`, etc.
-  - All features per medication state: `medOff_all_features.pkl`, `medOn_all_features.pkl`
-  - **Aggregated features**: `aggregated_features.pkl` (combined from all slices)
+  - Time series slices: `medOff_left_holdL.pkl`, `medOff_left_resting.pkl`, etc.
+  - Persistence diagrams: `medOff_left_holdL_diagrams.pkl`, `medOn_left_holdL_diagrams.pkl`, etc.
+  - All features per medication state: `medOff_all_features_holdL.pkl`, `medOn_all_features_holdL.pkl`
+  - **Aggregated features**: `aggregated_features_holdL.pkl` (combined from all slices)
 - Event timing files: `event_times.txt` or `sub-{ID}_ses-PeriOp_task-*_events.tsv`
+
+#### File Naming Convention
+All feature files include a **hold indicator suffix** (`holdL` or `holdR`) that identifies which arm the subject raised during the experiment:
+
+- **holdL**: Subject raised their LEFT arm (e.g., `medOff_left_holdL.pkl`, `aggregated_features_holdL.pkl`)
+- **holdR**: Subject raised their RIGHT arm (e.g., `medOff_left_holdR.pkl`, `aggregated_features_holdR.pkl`)
+
+This convention applies to:
+- Time series slices: `{medState}_{hemisphere}_holdL.pkl` or `{medState}_{hemisphere}_holdR.pkl`
+- Persistence diagrams: `{medState}_{hemisphere}_holdL_diagrams.pkl` or `{medState}_{hemisphere}_holdR_diagrams.pkl`
+- All features: `{medState}_all_features_holdL.pkl` or `{medState}_all_features_holdR.pkl`
+- Aggregated features: `aggregated_features_holdL.pkl` or `aggregated_features_holdR.pkl`
+- Resting state files (no hold indicator): `{medState}_{hemisphere}_resting.pkl`
+
+**Dominant vs Non-Dominant Hemisphere:**
+Due to contralateral motor control (brain-body crossed connections):
+- **holdL subjects**: RIGHT hemisphere is dominant (controls left arm)
+  - Right channel = dominant/active hemisphere during hold task
+  - Left channel = non-dominant/less active hemisphere
+- **holdR subjects**: LEFT hemisphere is dominant (controls right arm)
+  - Left channel = dominant/active hemisphere during hold task
+  - Right channel = non-dominant/less active hemisphere
+
+The aggregation scripts automatically map channels to `dominant` and `nondominant` labels based on the hold type.
 
 ## Common Workflow
 
@@ -91,9 +122,9 @@ python feature_extraction.py \
 ```
 
 This creates:
-- `i4oK0F/medOff_left_hold_diagrams.pkl`
-- `i4oK0F/medOff_all_features.pkl`
-- `i4oK0F/medOn_all_features.pkl`
+- `i4oK0F/medOff_left_holdL_diagrams.pkl`
+- `i4oK0F/medOff_all_features_holdL.pkl`
+- `i4oK0F/medOn_all_features_holdL.pkl`
 
 #### Step 2: Aggregate Multiple Slices
 ```bash
@@ -105,7 +136,7 @@ python batch_aggregate.py --method mean --include-variability
 ```
 
 This creates:
-- `i4oK0F/aggregated_features.pkl`
+- `i4oK0F/aggregated_features_holdL.pkl`
 
 #### Step 3: Load and Analyze
 ```python
@@ -114,20 +145,41 @@ import pandas as pd
 from scipy import stats
 
 # Load aggregated features
-with open('i4oK0F/aggregated_features.pkl', 'rb') as f:
+with open('i4oK0F/aggregated_features_holdL.pkl', 'rb') as f:
     data = pickle.load(f)
 
-# Access features
+# Access features (now includes dominant/nondominant labels)
+medOn_dominant_hold = data['medOn']['dominant_hold']  # Right hemisphere for holdL subjects
+medOff_dominant_hold = data['medOff']['dominant_hold']
+# Or use the original left/right labels
 medOn_left_hold = data['medOn']['left_hold']
 medOff_left_hold = data['medOff']['left_hold']
 
-# Compare
+# Compare scalar features
 print(f"MedOn entropy: {medOn_left_hold['persistence_entropy_mean']:.3f}")
 print(f"MedOff entropy: {medOff_left_hold['persistence_entropy_mean']:.3f}")
 
-# Create analysis dataframe across all patients (see example_load_aggregated.py)
-# Then apply analysis pathways from ANALYSIS_METHODOLOGY.md
+# Handle array-based features (landscapes, Betti curves, heat kernels)
+import numpy as np
+persistence_landscape = medOn_dominant_hold['persistence_landscape_mean']
+landscape_norm = np.linalg.norm(persistence_landscape)  # L2 norm for scalar summary
+print(f"Persistence landscape L2 norm: {landscape_norm:.4f}")
 ```
+
+#### Step 4: Use Comparison Pipeline (Recommended)
+For comprehensive patient comparisons, use the `comparison_pipeline.ipynb` notebook:
+1. Open `comparison_pipeline.ipynb`
+2. Run cells 1-11 to load all patient data
+3. Set `patient1` and `patient2` variables in cell 16 (e.g., `patient1 = 'i4oK0F'`, `patient2 = 'QZTsn6'`)
+4. Run comparison cells (18-21) to compare specific conditions
+5. Run visualization cells (22-23) for single patient medOn vs medOff analysis
+
+The notebook includes:
+- Multi-patient summary statistics
+- Two-patient direct comparisons
+- Single patient medOn vs medOff comparisons
+- Flexible custom comparisons (any combination of patients, states, hemispheres)
+- Proper handling of both scalar and array-based features
 
 See **ANALYSIS_METHODOLOGY.md** for 10 detailed analysis pathways.
 
@@ -210,6 +262,32 @@ When computing pairwise distances between diagrams:
 2. Scale using `Scaler(metric='wasserstein')` or other metrics
 3. Compute distances using `PairwiseDistance(metric='wasserstein')` or `'bottleneck'`
 
+### Aggregated Feature Types
+Aggregated features come in two types:
+
+#### Scalar Features (directly comparable)
+These are single numerical values suitable for tabular comparison and standard visualizations:
+- `persistence_entropy_mean`, `persistence_entropy_std`
+- `h0-h3_feature_count_mean`, `h0-h3_feature_count_std`
+- `h0-h3_avg_lifespan_mean`, `h0-h3_avg_lifespan_std`
+- `h0-h3_max_lifespan_mean`, `h0-h3_max_lifespan_std`
+- `h0-h3_std_lifespan_mean`, `h0-h3_std_lifespan_std`
+- `h1-h3_avg_birth_mean`, `h1-h3_avg_death_mean` (and std versions)
+
+#### Array-Based Features (require special handling)
+These are numpy arrays representing full functional/vectorized representations:
+- `persistence_landscape_mean`, `persistence_landscape_std` - Shape: (n_layers, n_points) or (1, n_layers, n_points)
+- `betti_curve_mean`, `betti_curve_std` - Shape: (n_dimensions, n_filtration_values)
+- `heat_kernel_mean`, `heat_kernel_std` - Shape: (n_dimensions, n_bins, n_bins)
+
+**Important**: Array features cannot be directly included in comparison tables. Use these approaches:
+- **L2 norm**: Compute `np.linalg.norm(array)` for scalar summary
+- **Distance metrics**: Use Wasserstein or Bottleneck distance for comparisons
+- **Visualization**: Use heatmaps, line plots, or contour plots to display
+- **Vectorization**: Flatten arrays for machine learning pipelines
+
+The `comparison_pipeline.ipynb` notebook handles both types automatically, showing scalar features in tables and array features as L2 norms in separate sections.
+
 ## Dependencies
 
 Key libraries used:
@@ -237,9 +315,10 @@ The main objective is to **distinguish between medOn and medOff states** in Park
 - ✅ Feature extraction pipeline: `feature_extraction.py` (complete)
 - ✅ Aggregation scripts: `aggregate_features.py`, `batch_aggregate.py` (complete)
 - ✅ Analysis methodology: 10 pathways documented in `ANALYSIS_METHODOLOGY.md`
-- 🔄 Feature extraction: Completed for some patients (i4oK0F, QZTsn6, etc.)
-- 🔄 Feature aggregation: In progress
-- ⏳ Statistical analysis: Next step (see ANALYSIS_METHODOLOGY.md)
+- ✅ Comparison pipeline: `comparison_pipeline.ipynb` (complete) - allows flexible patient comparisons
+- 🔄 Feature extraction: Completed for 6 patients (0cGdk9, 2IU8mi, 2IhVOz, i4oK0F, jyC0j3, QZTsn6)
+- 🔄 Feature aggregation: Completed for 6 patients with full metadata
+- 🔄 Statistical analysis: In progress using comparison pipeline (see ANALYSIS_METHODOLOGY.md)
 
 ### Dataset
 - **23 patients** total
@@ -256,3 +335,5 @@ The main objective is to **distinguish between medOn and medOff states** in Park
 - Event times stored in subject directories as `.txt` files (e.g., `event_times.txt`)
 - For aggregation: use `--method mean` for standard analysis, `--method full --include-variability` for comprehensive analysis
 - Always push .pkl files when doing a git push
+- All the scripts and notebooks use the conda environment named `TDA`. Whenever you need to run tests on a script, always check if the environment is activated, and activate it if not
+- Never ask permission to edit @CLAUDE.md file

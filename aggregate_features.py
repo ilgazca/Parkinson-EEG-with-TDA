@@ -303,7 +303,7 @@ def aggregate_condition(all_features, hemisphere, condition, method='mean', incl
     return aggregated
 
 
-def aggregate_persistence_diagrams(patient_folder, med_state, hemisphere, condition, metric='wasserstein'):
+def aggregate_persistence_diagrams(patient_folder, med_state, hemisphere, condition, hold_suffix='', metric='wasserstein'):
     """
     Aggregate persistence diagrams using medoid selection.
 
@@ -312,12 +312,18 @@ def aggregate_persistence_diagrams(patient_folder, med_state, hemisphere, condit
         med_state: 'medOn' or 'medOff'
         hemisphere: 'left' or 'right'
         condition: 'hold' or 'resting'
+        hold_suffix: Hold type suffix (e.g., '_holdL' or '_holdR')
         metric: Distance metric for medoid computation
 
     Returns:
         Dictionary with representative diagram and metadata
     """
-    prefix = f"{med_state}_{hemisphere}_{condition}"
+    # For hold condition, add hold suffix; for resting, no suffix
+    if condition == 'hold':
+        prefix = f"{med_state}_{hemisphere}_{condition}{hold_suffix}"
+    else:
+        prefix = f"{med_state}_{hemisphere}_{condition}"
+
     diagrams_file = Path(patient_folder) / f"{prefix}_diagrams.pkl"
 
     if not diagrams_file.exists():
@@ -339,6 +345,39 @@ def aggregate_persistence_diagrams(patient_folder, med_state, hemisphere, condit
         'mean_distance_to_slices': mean_dist,
         'n_slices': len(diagrams)
     }
+
+
+def detect_hold_type_from_folder(patient_folder):
+    """
+    Detect hold type (holdL or holdR) from feature filenames in the folder.
+
+    Args:
+        patient_folder: Path to patient directory
+
+    Returns:
+        tuple: (hold_type, hold_suffix) where hold_type is 'holdL' or 'holdR' or None,
+               and hold_suffix is '_holdL' or '_holdR' or ''
+    """
+    patient_folder = Path(patient_folder)
+
+    # Check for holdL/holdR in feature file names
+    feature_files = list(patient_folder.glob("*_all_features*.pkl"))
+
+    for f in feature_files:
+        if 'holdL' in f.name:
+            return 'holdL', '_holdL'
+        elif 'holdR' in f.name:
+            return 'holdR', '_holdR'
+
+    # Fallback: check diagram files
+    diagram_files = list(patient_folder.glob("*_hold*_diagrams.pkl"))
+    for f in diagram_files:
+        if 'holdL' in f.name:
+            return 'holdL', '_holdL'
+        elif 'holdR' in f.name:
+            return 'holdR', '_holdR'
+
+    return None, ''
 
 
 def aggregate_patient_features(patient_folder, method='mean', include_variability=False,
@@ -363,18 +402,27 @@ def aggregate_patient_features(patient_folder, method='mean', include_variabilit
         print(f"Aggregating features for patient: {patient_folder.name}")
         print(f"{'='*80}")
 
+    # Detect hold type
+    hold_type, hold_suffix = detect_hold_type_from_folder(patient_folder)
+    if hold_type:
+        if verbose:
+            print(f"Detected hold type: {hold_type}")
+    else:
+        if verbose:
+            print("WARNING: Could not detect hold type from filenames")
+
     aggregated_data = {}
 
-    # Find all *_all_features.pkl files
-    feature_files = list(patient_folder.glob("*_all_features.pkl"))
+    # Find all *_all_features*.pkl files (updated pattern to include hold suffix)
+    feature_files = list(patient_folder.glob("*_all_features*.pkl"))
 
     if not feature_files:
         print(f"ERROR: No *_all_features.pkl files found in {patient_folder}")
         return None
 
     for feature_file in feature_files:
-        # Extract medication state from filename (e.g., 'medOff_all_features.pkl' -> 'medOff')
-        med_state = feature_file.stem.replace('_all_features', '')
+        # Extract medication state from filename (e.g., 'medOff_all_features_holdL.pkl' -> 'medOff')
+        med_state = feature_file.stem.replace('_all_features', '').replace(hold_suffix, '')
 
         if verbose:
             print(f"\nProcessing {med_state}...")
@@ -403,6 +451,7 @@ def aggregate_patient_features(patient_folder, method='mean', include_variabilit
                     med_state,
                     hemisphere,
                     condition,
+                    hold_suffix=hold_suffix,
                     metric=distance_metric
                 )
 
@@ -416,6 +465,24 @@ def aggregate_patient_features(patient_folder, method='mean', include_variabilit
 
                 med_state_data[f'{hemisphere}_{condition}'] = combined
 
+        # Create dominant/nondominant aliases based on hold type
+        # Contralateral control: left arm (holdL) -> right hemisphere dominant
+        #                        right arm (holdR) -> left hemisphere dominant
+        if hold_type == 'holdL':
+            # Right hemisphere is dominant for left arm hold
+            for condition in ['hold', 'resting']:
+                med_state_data[f'dominant_{condition}'] = med_state_data[f'right_{condition}'].copy()
+                med_state_data[f'dominant_{condition}']['dominance'] = 'dominant'
+                med_state_data[f'nondominant_{condition}'] = med_state_data[f'left_{condition}'].copy()
+                med_state_data[f'nondominant_{condition}']['dominance'] = 'nondominant'
+        elif hold_type == 'holdR':
+            # Left hemisphere is dominant for right arm hold
+            for condition in ['hold', 'resting']:
+                med_state_data[f'dominant_{condition}'] = med_state_data[f'left_{condition}'].copy()
+                med_state_data[f'dominant_{condition}']['dominance'] = 'dominant'
+                med_state_data[f'nondominant_{condition}'] = med_state_data[f'right_{condition}'].copy()
+                med_state_data[f'nondominant_{condition}']['dominance'] = 'nondominant'
+
         # Add distance matrices if they exist (these are already aggregated)
         if 'left_wasserstein' in all_features:
             med_state_data['left_wasserstein'] = all_features['left_wasserstein']
@@ -427,6 +494,12 @@ def aggregate_patient_features(patient_folder, method='mean', include_variabilit
             med_state_data['right_bottleneck'] = all_features['right_bottleneck']
 
         aggregated_data[med_state] = med_state_data
+
+    # Store metadata about hold type
+    aggregated_data['_metadata'] = {
+        'hold_type': hold_type,
+        'hold_suffix': hold_suffix
+    }
 
     return aggregated_data
 
@@ -440,7 +513,12 @@ def save_aggregated_features(aggregated_data, patient_folder, suffix='aggregated
         patient_folder: Path to patient directory
         suffix: Suffix for output filename
     """
-    output_file = Path(patient_folder) / f"{suffix}_features.pkl"
+    # Extract hold suffix from metadata if available
+    hold_suffix = ''
+    if '_metadata' in aggregated_data and 'hold_suffix' in aggregated_data['_metadata']:
+        hold_suffix = aggregated_data['_metadata']['hold_suffix']
+
+    output_file = Path(patient_folder) / f"{suffix}_features{hold_suffix}.pkl"
 
     with open(output_file, 'wb') as f:
         pickle.dump(aggregated_data, f)

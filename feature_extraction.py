@@ -44,6 +44,7 @@ from gtda.diagrams import (
 def load_event_times(event_file, med_state=None):
     """
     Load event times from a text file, selecting the correct section based on medication state.
+    If only one section exists, it will be used for both medOn and medOff states.
 
     Args:
         event_file (str): Path to event times file
@@ -60,6 +61,18 @@ def load_event_times(event_file, med_state=None):
     try:
         with open(event_file, 'r') as f:
             lines = f.readlines()
+
+        # First pass: count how many sections exist
+        section_count = 0
+        for line in lines:
+            line = line.strip()
+            if line.startswith('---') and 'events.tsv' in line.lower():
+                section_count += 1
+
+        # If only one section exists, use it regardless of med_state
+        use_single_section = (section_count <= 1)
+        if use_single_section and med_state:
+            print(f"ℹ Only one event table found - using it for {med_state} state")
 
         # Parse the file - assuming format with labels
         events = {'hold': [], 'resting': []}
@@ -80,7 +93,11 @@ def load_event_times(event_file, med_state=None):
                     current_section = 'medOff'
 
                 # Check if this is the section we want
-                if med_state is None:
+                if use_single_section:
+                    # Use the single section for any requested med_state
+                    in_correct_section = True
+                    print(f"✓ Using single section (labeled as {current_section if current_section else 'unspecified'})")
+                elif med_state is None:
                     # If no med_state specified, use the first section found
                     in_correct_section = True
                 elif med_state.lower().replace('_', '').replace('-', '') == current_section.lower():
@@ -241,6 +258,27 @@ def slice_signal_by_events(signal, event_times, fs, slice_length=60, event_type=
     return slices
 
 
+def detect_hold_type(mat_file):
+    """
+    Detect whether the data is from HoldL or HoldR experiment by examining the filename.
+
+    Args:
+        mat_file (str): Path to .mat data file
+
+    Returns:
+        str: 'holdL' or 'holdR' or None if not detected
+    """
+    import re
+    basename = os.path.basename(mat_file)
+
+    if 'HoldL' in basename:
+        return 'holdL'
+    elif 'HoldR' in basename:
+        return 'holdR'
+    else:
+        return None
+
+
 def process_pipeline(mat_file, event_times_file, output_folder, args):
     """
     Main processing pipeline for TDA feature extraction.
@@ -254,6 +292,16 @@ def process_pipeline(mat_file, event_times_file, output_folder, args):
 
     # Create output folder if it doesn't exist
     Path(output_folder).mkdir(parents=True, exist_ok=True)
+
+    # Detect hold type from filename
+    hold_type = detect_hold_type(mat_file)
+    if hold_type is None:
+        print("WARNING: Could not detect hold type (HoldL or HoldR) from filename.")
+        print("         Using default naming without hold suffix.")
+        hold_suffix = ""
+    else:
+        hold_suffix = f"_{hold_type}"
+        print(f"Detected hold type: {hold_type}")
 
     print("="*80)
     print("PARKINSON'S LFP TDA FEATURE EXTRACTION PIPELINE")
@@ -326,8 +374,8 @@ def process_pipeline(mat_file, event_times_file, output_folder, args):
     # Save sliced time series if requested
     if args.save_timeseries:
         print("\nSaving sliced time series...")
-        pickle.dump(left_hold, open(os.path.join(output_folder, f"{args.prefix}_left_hold.pkl"), "wb"))
-        pickle.dump(right_hold, open(os.path.join(output_folder, f"{args.prefix}_right_hold.pkl"), "wb"))
+        pickle.dump(left_hold, open(os.path.join(output_folder, f"{args.prefix}_left_hold{hold_suffix}.pkl"), "wb"))
+        pickle.dump(right_hold, open(os.path.join(output_folder, f"{args.prefix}_right_hold{hold_suffix}.pkl"), "wb"))
         pickle.dump(left_resting, open(os.path.join(output_folder, f"{args.prefix}_left_resting.pkl"), "wb"))
         pickle.dump(right_resting, open(os.path.join(output_folder, f"{args.prefix}_right_resting.pkl"), "wb"))
 
@@ -407,9 +455,9 @@ def process_pipeline(mat_file, event_times_file, output_folder, args):
 
     # Save persistence diagrams
     print("\nSaving persistence diagrams...")
-    pickle.dump(left_hold_diagrams, open(os.path.join(output_folder, f"{args.prefix}_left_hold_diagrams.pkl"), "wb"))
+    pickle.dump(left_hold_diagrams, open(os.path.join(output_folder, f"{args.prefix}_left_hold{hold_suffix}_diagrams.pkl"), "wb"))
     pickle.dump(left_resting_diagrams, open(os.path.join(output_folder, f"{args.prefix}_left_resting_diagrams.pkl"), "wb"))
-    pickle.dump(right_hold_diagrams, open(os.path.join(output_folder, f"{args.prefix}_right_hold_diagrams.pkl"), "wb"))
+    pickle.dump(right_hold_diagrams, open(os.path.join(output_folder, f"{args.prefix}_right_hold{hold_suffix}_diagrams.pkl"), "wb"))
     pickle.dump(right_resting_diagrams, open(os.path.join(output_folder, f"{args.prefix}_right_resting_diagrams.pkl"), "wb"))
 
     # ========================================================================
@@ -508,7 +556,7 @@ def process_pipeline(mat_file, event_times_file, output_folder, args):
     # Save All Features
     # ========================================================================
     print(f"\nSaving all features to {output_folder}...")
-    features_file = os.path.join(output_folder, f"{args.prefix}_all_features.pkl")
+    features_file = os.path.join(output_folder, f"{args.prefix}_all_features{hold_suffix}.pkl")
     with open(features_file, "wb") as f:
         pickle.dump(all_features, f)
 
@@ -516,10 +564,10 @@ def process_pipeline(mat_file, event_times_file, output_folder, args):
     print("PIPELINE COMPLETED SUCCESSFULLY!")
     print(f"{'='*80}")
     print(f"\nOutput saved to: {output_folder}")
-    print(f"  - Persistence diagrams: *_diagrams.pkl")
-    print(f"  - All features: {args.prefix}_all_features.pkl")
+    print(f"  - Persistence diagrams: *_hold{hold_suffix}_diagrams.pkl, *_resting_diagrams.pkl")
+    print(f"  - All features: {args.prefix}_all_features{hold_suffix}.pkl")
     if args.save_timeseries:
-        print(f"  - Time series slices: *_hold.pkl, *_resting.pkl")
+        print(f"  - Time series slices: *_hold{hold_suffix}.pkl, *_resting.pkl")
 
     # Print feature summary
     print(f"\nFeature Summary:")

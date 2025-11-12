@@ -19,7 +19,7 @@ from pathlib import Path
 
 def find_patient_folders(base_dir='.'):
     """
-    Find all patient folders containing *_all_features.pkl files.
+    Find all patient folders containing *_all_features*.pkl files.
 
     Args:
         base_dir: Base directory to search
@@ -30,11 +30,11 @@ def find_patient_folders(base_dir='.'):
     base_path = Path(base_dir)
     patient_folders = []
 
-    # Look for directories containing *_all_features.pkl files
+    # Look for directories containing *_all_features*.pkl files (includes holdL/holdR suffixes)
     for item in base_path.iterdir():
         if item.is_dir():
             # Check if this folder has feature files
-            feature_files = list(item.glob("*_all_features.pkl"))
+            feature_files = list(item.glob("*_all_features*.pkl"))
             if feature_files:
                 patient_folders.append(item)
 
