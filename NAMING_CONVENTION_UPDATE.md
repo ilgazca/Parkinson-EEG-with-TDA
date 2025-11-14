@@ -6,18 +6,28 @@ Updated all scripts to follow a consistent naming convention that includes hold 
 ## Key Changes
 
 ### 1. File Naming Convention
-All feature files now include a hold type suffix:
+All feature files now use dominant/nondominant hemisphere naming and include hold type suffix:
 
-**Pattern:**
+**Pattern (batch_feature_extraction.py - NEW):**
+- `{medState}_{dominant|nondominant}_{condition}_{hold{L|R}}_diagrams.pkl` - Persistence diagrams
+- `{medState}_{dominant|nondominant}_{condition}_{hold{L|R}}_diagram.png` - Diagram plots
+- `{medState}_{dominant|nondominant}_{condition}_{hold{L|R}}_landscape.png` - Landscape plots
+- `{medState}_{dominant|nondominant}_{condition}_{hold{L|R}}_betti.png` - Betti curve plots
+- `{medState}_{dominant|nondominant}_{condition}_{hold{L|R}}_heat.png` - Heat kernel plots
+- `{medState}_all_features_{hold{L|R}}.pkl` - All extracted features
+
+**Examples (NEW convention):**
+- `medOff_dominant_hold_holdL_diagrams.pkl` - Dominant hemisphere (right), medOff state, holdL subject
+- `medOff_nondominant_hold_holdL_diagrams.pkl` - Non-dominant hemisphere (left), medOff state, holdL subject
+- `medOn_dominant_resting_diagrams.pkl` - Dominant hemisphere, medOn state, resting period
+- `medOn_nondominant_resting_diagrams.pkl` - Non-dominant hemisphere, medOn state, resting period
+- `medOff_all_features_holdL.pkl` - All features for holdL subject, medOff state
+
+**Pattern (legacy feature_extraction.py):**
 - `{medState}_{hemisphere}_hold{L|R}.pkl` - Time series (e.g., `medOff_left_holdL.pkl`)
 - `{medState}_{hemisphere}_hold{L|R}_diagrams.pkl` - Persistence diagrams
 - `{medState}_all_features_hold{L|R}.pkl` - All extracted features
 - `aggregated_features_hold{L|R}.pkl` - Aggregated features
-
-**Examples:**
-- `medOff_left_holdL.pkl` - Left channel, medOff state, left arm hold subject
-- `medOn_right_holdR.pkl` - Right channel, medOn state, right arm hold subject
-- `aggregated_features_holdL.pkl` - Aggregated features for left arm hold subject
 
 ### 2. Dominant/Non-Dominant Mapping
 Based on **contralateral motor control** (crossed brain-body connections):
@@ -29,9 +39,26 @@ Based on **contralateral motor control** (crossed brain-body connections):
 
 ## Updated Scripts
 
-### feature_extraction.py
+### batch_feature_extraction.py (NEW)
 - **Auto-detection**: Automatically detects HoldL or HoldR from .mat filename
-- **Naming**: All output files include appropriate hold suffix
+- **Dominant mapping**: Maps left/right hemispheres to dominant/nondominant based on hold type
+- **Naming**: All output files use dominant/nondominant naming for easier cross-subject comparison
+- **Example output**:
+  ```
+  medOff_dominant_hold_holdL_diagrams.pkl
+  medOff_nondominant_hold_holdL_diagrams.pkl
+  medOff_dominant_resting_diagrams.pkl
+  medOff_nondominant_resting_diagrams.pkl
+  medOff_all_features_holdL.pkl
+  ```
+- **Benefits**:
+  - Consistent naming across subjects regardless of which arm they raised
+  - Dominant hemisphere always refers to the hemisphere controlling the raised arm
+  - Simplifies analysis by allowing direct comparison of dominant vs nondominant features
+
+### feature_extraction.py (LEGACY)
+- **Auto-detection**: Automatically detects HoldL or HoldR from .mat filename
+- **Naming**: All output files include appropriate hold suffix using left/right naming
 - **Example output**:
   ```
   medOff_left_holdL.pkl
@@ -44,8 +71,36 @@ Based on **contralateral motor control** (crossed brain-body connections):
 - **Dual naming**: Creates both left/right AND dominant/nondominant keys
 - **Metadata**: Stores hold type information in `_metadata` key
 
-**Data Structure:**
+**Data Structure (batch_feature_extraction.py output):**
 ```python
+# Structure of medState_all_features_holdL.pkl
+data = {
+    'hold': {
+        'dominant': {               # Active hemisphere controlling raised arm
+            'persistence_entropy': ...,
+            'stats': {...},
+            'persistence_landscape': ...,
+            'betti_curve': ...,
+            'heat_kernel': ...
+        },
+        'nondominant': {            # Less-active hemisphere
+            'persistence_entropy': ...,
+            'stats': {...},
+            'persistence_landscape': ...,
+            'betti_curve': ...,
+            'heat_kernel': ...
+        }
+    },
+    'resting': {
+        'dominant': {...},          # Same structure as above
+        'nondominant': {...}
+    }
+}
+```
+
+**Data Structure (aggregate_features.py output):**
+```python
+# Structure of aggregated_features_holdL.pkl
 data = {
     'medOn': {
         'left_hold': {...},           # Original left hemisphere, hold task
@@ -71,11 +126,36 @@ data = {
 
 ## Usage Examples
 
-### Loading Aggregated Data
+### Loading Feature Data (batch_feature_extraction.py output)
 ```python
 import pickle
 
-# Load aggregated features
+# Load features from batch_feature_extraction.py
+with open('i4oK0F/medOff_all_features_holdL.pkl', 'rb') as f:
+    data = pickle.load(f)
+
+# Access features by condition and dominance
+# For holdL subjects: dominant = right hemisphere, nondominant = left hemisphere
+hold_dominant = data['hold']['dominant']  # Features from dominant (right) hemisphere during hold
+hold_nondominant = data['hold']['nondominant']  # Features from nondominant (left) hemisphere during hold
+resting_dominant = data['resting']['dominant']
+resting_nondominant = data['resting']['nondominant']
+
+# Access specific features
+entropy = hold_dominant['persistence_entropy']
+stats = hold_dominant['stats']
+landscape = hold_dominant['persistence_landscape']
+betti = hold_dominant['betti_curve']
+heat = hold_dominant['heat_kernel']
+
+print(f"Shape of persistence landscape: {landscape.shape}")
+```
+
+### Loading Aggregated Data (aggregate_features.py output - LEGACY)
+```python
+import pickle
+
+# Load aggregated features (if using aggregate_features.py)
 with open('i4oK0F/aggregated_features_holdL.pkl', 'rb') as f:
     data = pickle.load(f)
 
@@ -92,6 +172,22 @@ print(f"Dominant hemisphere: {medOn_dominant_hold['hemisphere']}")  # 'right' fo
 ```
 
 ### Running Feature Extraction
+
+**Using batch_feature_extraction.py (RECOMMENDED):**
+```bash
+# Process all 14 patients automatically
+python batch_feature_extraction.py
+
+# Outputs for each patient (e.g., i4oK0F with holdL):
+# - medOff_dominant_hold_holdL_diagrams.pkl
+# - medOff_nondominant_hold_holdL_diagrams.pkl
+# - medOff_dominant_resting_diagrams.pkl
+# - medOff_nondominant_resting_diagrams.pkl
+# - medOff_all_features_holdL.pkl
+# (and corresponding .png plot files)
+```
+
+**Using feature_extraction.py (LEGACY):**
 ```bash
 # The script auto-detects hold type from filename
 python feature_extraction.py \
@@ -115,10 +211,13 @@ python batch_aggregate.py --method mean
 ## Benefits
 
 1. **Clear Subject Identification**: Immediately know which arm each subject raised
-2. **Simplified Analysis**: Use `dominant_hold` vs `nondominant_hold` for consistent cross-subject comparisons
+2. **Simplified Analysis**: Use `dominant` vs `nondominant` keys for consistent cross-subject comparisons
 3. **Contralateral Control**: Properly accounts for brain-body motor control relationships
-4. **Backward Compatible**: Original left/right keys still available
-5. **Automatic**: All detection and mapping happens automatically
+   - holdL subjects: dominant = right hemisphere (controls left arm)
+   - holdR subjects: dominant = left hemisphere (controls right arm)
+4. **Consistent Naming**: All subjects can be compared using the same key names regardless of which arm they raised
+5. **Automatic Detection**: All hold type detection and dominant/nondominant mapping happens automatically
+6. **Research-Oriented**: File names directly reflect the neurological significance (dominant hemisphere = active during task)
 
 ## Migration Notes
 

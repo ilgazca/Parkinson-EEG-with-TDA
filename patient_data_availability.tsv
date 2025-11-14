@@ -1,0 +1,15 @@
+patient_id	hold_type	has_medOff	has_medOn	medOff_file	medOn_file
+0cGdk9	HoldL	Yes	Yes	sub-0cGdk9_HoldL_MedOff_run1_LFP_Hilbert.mat	sub-0cGdk9_HoldL_MedOn_run1_LFP_Hilbert.mat
+2IU8mi	HoldL	Yes	Yes	sub-2IU8mi_HoldL_MedOff_run1_LFP_Hilbert.mat	sub-2IU8mi_HoldL_MedOn_merged_LFP_Hilbert.mat
+2IhVOz	HoldR	Yes	Yes	sub-2IhVOz_HoldR_MedOff_merged_LFP_Hilbert.mat	sub-2IhVOz_HoldR_MedOn_merged_LFP_Hilbert.mat
+AB2PeX	HoldL	Yes	No	sub-AB2PeX_HoldL_MedOff_merged_LFP_Hilbert.mat	
+AbzsOg	HoldL	Yes	Yes	sub_AbzsOg_HoldL_MedOff_merged_LFP_Hilbert.mat	sub_AbzsOg_HoldL_MedOn_merged_LFP_Hilbert.mat
+BYJoWR	HoldR	Yes	Yes	sub_BYJoWR_HoldR_MedOff_merged_LFP_Hilbert.mat	sub_BYJoWR_HoldR_MedOn_merged_LFP_Hilbert.mat
+FYbcap	HoldL	No	Yes		sub_FYbcap_HoldL_MedOn_run1_LFP_Hilbert.mat
+PuPVlx	HoldL	Yes	No	sub_PuPVlx_HoldL_MedOff_merged_LFP_Hilbert.mat	
+QZTsn6	HoldL	Yes	Yes	sub_QZTsn6_HoldL_MedOff_run1_LFP_Hilbert.mat	sub_QZTsn6_HoldL_MedOn_run1_LFP_Hilbert.mat
+VopvKx	HoldR	No	Yes		sub_VopvKx_HoldR_MedOn_run1_LFP_Hilbert.mat
+dCsWjQ	HoldL	Yes	Yes	sub_dCsWjQ_HoldL_MedOff_run1_LFP_Hilbert.mat	sub_dCsWjQ_HoldL_MedOn_merged_LFP_Hilbert.mat
+gNX5yb	HoldL	Yes	No	sub_gNX5yb_HoldL_MedOff_run1_LFP_Hilbert.mat	
+i4oK0F	HoldL	Yes	Yes	sub_i4oK0F_HoldL_MedOff_run1_LFP_Hilbert.mat	sub_i4oK0F_HoldL_MedOn_run1_LFP_Hilbert.mat
+jyC0j3	HoldR	Yes	Yes	sub_jyC0j3_HoldR_MedOff_run1_LFP_Hilbert.mat	sub_jyC0j3_HoldR_MedOn_run1_LFP_Hilbert.mat

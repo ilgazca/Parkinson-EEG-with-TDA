@@ -1,0 +1,16 @@
+--- sub-AbzsOg_ses-PeriOp_task-HoldL_acq-MedOff_run-1_split-01_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 300.000000 300.000000
+     HoldL 308.266000  91.666000 399.932000
+     HoldL 443.070297 208.834122 651.904419
+     HoldL 708.000325  83.970327 791.970652
+     HoldL 828.819558  78.612337 907.431895
+
+
+--- sub-AbzsOg_ses-PeriOp_task-HoldL_acq-MedOn_run-1_split-01_events.tsv ---
+trial_type     onset  duration        end
+      rest   0.00000 300.00000 300.000000
+     HoldL 337.71481  80.20025 417.915061
+     HoldL 489.78450 222.75950 712.544000
+     HoldL 760.35800  61.83950 822.197500
+     HoldL 886.34050  74.40900 960.749500

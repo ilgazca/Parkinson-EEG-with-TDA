@@ -2,8 +2,8 @@ import pandas as pd
 
 # List of the .tsv files you want to process
 file_list = [
-    "/home/ilgazc/Data/Parkinson_medOn_medOff/dCsWjQ/sub-dCsWjQ_ses-PeriOp_task-HoldL_acq-MedOff_run-1_events.tsv",
-    "/home/ilgazc/Data/Parkinson_medOn_medOff/dCsWjQ/sub-dCsWjQ_ses-PeriOp_task-HoldL_acq-MedOn_run-1_split-01_events.tsv"
+    #"/home/ilgazc/Data/Parkinson_medOn_medOff/AbzsOg/sub-AbzsOg_ses-PeriOp_task-HoldL_acq-MedOff_run-1_split-01_events.tsv",
+    "/home/ilgazc/Data/Parkinson_medOn_medOff/FYbcap/sub-FYbcap_ses-PeriOp_task-HoldL_acq-MedOn_run-1_events.tsv"
 ]
 
 # A dictionary to store all the dataframes

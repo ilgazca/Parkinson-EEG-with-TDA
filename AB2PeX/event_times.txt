@@ -1,0 +1,8 @@
+--- Processing File: /home/ilgazc/Data/Parkinson_medOn_medOff/AB2PeX/sub-AB2PeX_ses-PeriOp_task-HoldL_acq-MedOff_run-1_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 286.000000 286.000000
+     HoldL 311.926355  90.902145 402.828500
+     HoldL 423.261000  68.161000 491.422000
+     HoldL 515.992500  77.745000 593.737500
+     HoldL 630.997500  69.036500 700.034000
+     HoldL 724.667268  93.480825 818.148092

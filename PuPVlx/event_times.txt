@@ -1,0 +1,8 @@
+--- sub-PuPVlx_ses-PeriOp_task-HoldL_acq-MedOff_run-1_split-01_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.067606 317.302037 317.369643
+     HoldL 453.596848  63.877107 517.473955
+     HoldL 547.047762  64.181719 611.229481
+     HoldL 632.095472  67.064808 699.160280
+     HoldL 718.206412  73.712780 791.919192
+     HoldL 810.209494  63.719626 873.929120

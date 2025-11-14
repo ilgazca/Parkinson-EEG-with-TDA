@@ -1,0 +1,9 @@
+--- sub-FYbcap_ses-PeriOp_task-HoldL_acq-MedOn_run-1_events.tsv ---
+trial_type      onset   duration        end
+      rest   0.000000 300.000000 300.000000
+   bad_lfp 208.006656   5.577511 213.584167
+     HoldL 303.806500  59.255014 363.061514
+   bad_lfp 324.259390   6.557801 330.817191
+     HoldL 389.386609 106.952391 496.339000
+     HoldL 526.762000  75.669000 602.431000
+     HoldL 633.158854  69.590646 702.749500
