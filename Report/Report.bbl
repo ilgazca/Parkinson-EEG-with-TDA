@@ -1,0 +1,22 @@
+\begin{thebibliography}{2}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Rassoulou et~al.(2024)Rassoulou, Steina, Hartmann, Vesper, Butz, Schnitzler, and Hirschmann]{rassoulou_exploring_2024}
+Fayed Rassoulou, Alexandra Steina, Christian~J. Hartmann, Jan Vesper, Markus Butz, Alfons Schnitzler, and Jan Hirschmann.
+\newblock Exploring the electrophysiology of {Parkinson}’s disease with magnetoencephalography and deep brain recordings.
+\newblock \emph{Sci Data}, 11\penalty0 (1):\penalty0 889, August 2024.
+\newblock ISSN 2052-4463.
+\newblock \doi{10.1038/s41597-024-03768-1}.
+\newblock URL \url{https://www.nature.com/articles/s41597-024-03768-1}.
+
+\bibitem[Tauzin et~al.(2021)Tauzin, Lupo, Tunstall, P\'{e}rez, Caorsi, Medina-Mardones, Dassatti, and Hess]{giotto-tda}
+Guillaume Tauzin, Umberto Lupo, Lewis Tunstall, Julian~Burella P\'{e}rez, Matteo Caorsi, Anibal~M. Medina-Mardones, Alberto Dassatti, and Kathryn Hess.
+\newblock giotto-tda: A topological data analysis toolkit for machine learning and data exploration.
+\newblock \emph{Journal of Machine Learning Research}, 22\penalty0 (39):\penalty0 1--6, 2021.
+\newblock URL \url{http://jmlr.org/papers/v22/20-325.html}.
+
+\end{thebibliography}

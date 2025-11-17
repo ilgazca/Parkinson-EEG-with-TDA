@@ -92,14 +92,24 @@ The planned workflow is:
 - **EEG_TDA_Pipeline.ipynb**: Main analysis notebook with complete TDA workflow
   - Interactive notebook for exploring the full pipeline
   - Includes preprocessing, TDA computation, and feature extraction
-- **01_Exploratory_Analysis.ipynb**: Exploratory data analysis notebook (IN PROGRESS)
+- **01_Exploratory_Analysis.ipynb**: Exploratory data analysis notebook (COMPLETED)
   - Comprehensive distribution analysis of topological features
-  - Normality assessment (Shapiro-Wilk tests, Q-Q plots)
-  - Hemisphere-specific analyses (dominant vs nondominant)
-  - MedOn vs MedOff visual comparisons (histograms, violin/box plots)
-  - Quantitative lateralization comparison with lateralization index
-  - Sections completed: data loading, descriptive statistics, distribution analysis, normality checks, hemisphere-specific analysis
-  - Remaining sections: outlier detection, correlation analysis, PCA visualization
+  - **Rigorous normality assessment** with medication state separation:
+    - Shapiro-Wilk tests on medOn, medOff, and paired differences (Cell 8 - pooled)
+    - Hemisphere-specific normality tests (Cell 21 - dominant/nondominant)
+    - Proper statistical approach: tests paired differences (key assumption for paired t-tests)
+  - **Automated test selection**: Cells automatically read normality results and select appropriate tests
+    - Cell 26 (pooled tests): Reads from Cell 8
+    - Cells 31-32 (hemisphere tests): Read from Cell 21
+  - **MedOn vs MedOff visual comparisons**:
+    - Overlapping histograms showing medication effects (Cells 5, 14)
+    - Separate statistics tables comparing states
+    - Hemisphere-specific visualizations
+  - **Statistical testing with FDR correction**:
+    - Pooled analysis (12 features): Cell 26-27
+    - Hemisphere-specific analysis (24 tests): Cells 31-33
+    - Shows both uncorrected and FDR-corrected significance
+  - Quantitative lateralization comparison with lateralization index (Cell 34)
 
 ### Documentation
 - **NAMING_CONVENTION_UPDATE.md**: File naming conventions
@@ -423,30 +433,49 @@ The main objective is to **distinguish between medOn and medOff states** in Park
 - Array feature summarization (landscapes → 32 metrics, Betti curves → 24 metrics)
 - Comprehensive visualizations (scatter, violin, forest, landscapes, heatmaps)
 
-**Next Steps:**
-1. **Exploratory Data Analysis** (Phase 4: Analysis Notebooks) - **IN PROGRESS**
+**Completed:**
+1. **Exploratory Data Analysis** - **COMPLETED**
    - ✅ Created `01_Exploratory_Analysis.ipynb`
    - ✅ Load all features and examine distributions
-   - ✅ Check distributions (histograms, Q-Q plots, violin/box plots)
-   - ✅ Normality assessment (Shapiro-Wilk tests for pooled and hemisphere-specific data)
+   - ✅ Medication state-specific distributions (medOn vs medOff overlapping histograms)
+   - ✅ **Rigorous normality assessment**:
+     - Pooled analysis: Tests medOn, medOff, and paired differences (Cell 8)
+     - Hemisphere-specific: Tests medOn, medOff, and differences per hemisphere (Cell 21)
+     - Proper criterion: Based on paired difference normality for test selection
    - ✅ Hemisphere-specific distribution analysis (dominant vs nondominant)
    - ✅ Quantitative lateralization comparison
-   - 🔄 Remaining: Outlier detection, correlation analysis, PCA visualization
-2. **Statistical Testing**
-   - Run paired t-tests on all scalar features
-   - Apply multiple comparison correction
-   - Identify significant discriminative features
-3. **Multi-Factor Analysis**
-   - Test hemisphere effects (dominant vs nondominant)
-   - Test condition effects (resting vs hold)
-   - Examine interactions
-4. **Comprehensive Summary**
-   - Rank features by discriminative power
-   - Generate publication-ready figures
-   - Create analysis report
 
-**Current Entry Point:**
-Continue with `01_Exploratory_Analysis.ipynb` (completing outlier detection, correlation, and PCA sections) before moving to `02_Statistical_Tests.ipynb`.
+2. **Statistical Testing** - **COMPLETED**
+   - ✅ **Pooled analysis** (Cell 26-27):
+     - Automatic test selection based on Cell 8 normality results
+     - Paired t-tests for features with normal differences
+     - Wilcoxon signed-rank tests for features with non-normal differences
+     - FDR correction (Benjamini-Hochberg) across 12 tests
+     - Shows both uncorrected and corrected significance
+   - ✅ **Hemisphere-specific analysis** (Cells 31-33):
+     - Automatic test selection based on Cell 21 normality results
+     - Separate analysis for dominant and nondominant hemispheres
+     - FDR correction across 24 tests (12 features × 2 hemispheres)
+     - Lateralization comparison
+     - Shows both uncorrected and corrected significance
+
+**Key Findings:**
+- **Pooled analysis**: 5/12 features significant before FDR correction, 0/12 after correction
+- **Hemisphere-specific**: 4/24 tests significant before correction (all in nondominant hemisphere), 0/24 after correction
+- **Lateralization pattern detected**: Medication effects stronger in nondominant hemisphere
+- **Strongest effects**: H3 entropy, H1 entropy, H1 feature count (all nondominant hemisphere)
+
+**Next Steps:**
+1. **Extended Analysis** (Optional)
+   - Outlier detection and sensitivity analysis
+   - Correlation analysis between features
+   - PCA/dimensionality reduction visualization
+   - Condition-specific effects (resting vs hold)
+2. **Manuscript Preparation**
+   - Methods section (statistical parameters documented)
+   - Results tables (LaTeX code generated)
+   - Discussion of null findings and lateralization patterns
+   - Power analysis for sample size justification
 
 ### Dataset
 - **14 patients** currently prepared (with event times)
@@ -492,9 +521,15 @@ Continue with `01_Exploratory_Analysis.ipynb` (completing outlier detection, cor
 
 ### Analysis Workflow Best Practices
 - **Always start with paired comparisons**: 9 paired patients provide most statistical power
+- **Test normality of paired differences, not individual groups**: For paired t-tests, the critical assumption is normality of the differences (medOn - medOff), not the individual medication states. This is implemented in Cells 8 and 21.
+- **Automatic test selection**: Configure cells to read normality results and automatically apply appropriate tests (t-test vs Wilcoxon) based on difference normality
 - **Use effect sizes**: Don't rely on p-values alone; Cohen's d provides magnitude
-- **Apply multiple comparison correction**: Use FDR (less conservative) or Bonferroni
-- **Visualize before testing**: Use EDA to understand distributions and outliers
+- **Apply multiple comparison correction**: Use FDR (Benjamini-Hochberg, less conservative) across entire test family
+  - Pooled analysis: 12 tests (one per feature)
+  - Hemisphere-specific: 24 tests (12 features × 2 hemispheres)
+- **Show both uncorrected and corrected results**: Transparency about correction impact (implemented in Cells 27 and 33)
+- **Visualize medication states separately**: Use overlapping histograms to show medOn vs medOff distributions before statistical testing
+- **Hemisphere-specific analysis**: Test each hemisphere separately - lateralization may reveal important patterns even when pooled analysis shows null results
 - **Save systematically**: Use consistent naming and save to appropriate results/ subdirectories
 - **Document findings**: Update results/reports/ with analysis summaries
 
@@ -507,3 +542,4 @@ Continue with `01_Exploratory_Analysis.ipynb` (completing outlier detection, cor
 - **Use verbose output**: Enable verbose mode to understand what functions are doing
 - **Check data quality**: Always examine loaded data structure before analysis
 - Do not ask permission for creating and editing .md files.
+- Don't ask for permission for running small python scripts that you use for reading the notebook

@@ -1,0 +1,6 @@
+\contentsline {section}{\numberline {1}Data and Feature Extraction}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Aim and Methodology}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Introduction to Data}{3}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Scalar Features Analysis (Summary Statistics)}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Pooled Brain Hemispheres}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Brain Hemisphere-Specific Analysis}{7}{subsection.2.2}%

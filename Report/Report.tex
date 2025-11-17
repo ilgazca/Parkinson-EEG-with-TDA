@@ -1,0 +1,576 @@
+\documentclass[11pt,a4paper]{article}
+
+% ============================================================================
+% PACKAGE IMPORTS
+% ============================================================================
+
+% Graphics and Figures
+\usepackage{graphicx}
+\graphicspath{{/home/ilgazc/Data/Parkinson_medOn_medOff/results/figures/}}
+\usepackage{float}
+\usepackage{subcaption}
+
+% Mathematics
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+
+% Tables
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{longtable}
+
+% Text Formatting
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{setspace}
+
+% Page Layout
+\usepackage[margin=1in]{geometry}
+\usepackage{fancyhdr}
+
+% Colors and Hyperlinks
+\usepackage[dvipsnames]{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+% Bibliography
+\usepackage[sort&compress,numbers]{natbib}
+\bibliographystyle{unsrtnat}
+
+% Algorithms and Code
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{codeblue}{rgb}{0.0,0.0,0.8}
+
+\lstdefinestyle{pythonoutput}{
+	backgroundcolor=\color{codegray},
+	basicstyle=\ttfamily\small,
+	breaklines=true,
+	frame=single,
+	framesep=10pt,
+	xleftmargin=10pt,
+	xrightmargin=10pt,
+	numbers=none,
+	showstringspaces=false
+}
+
+
+% Scientific Notation and Units
+\usepackage{siunitx}
+
+% Enhanced Lists
+\usepackage{enumitem}
+
+% Intelligent spacing after commands
+\usepackage{xspace}
+
+% ============================================================================
+% CUSTOM COMMANDS
+% ============================================================================
+
+% Mathematical operators
+\DeclareMathOperator{\Hom}{H}
+\DeclareMathOperator{\dgm}{dgm}
+\DeclareMathOperator{\pers}{pers}
+
+% Topological Data Analysis terms
+\newcommand{\TDA}{\textit{Topological Data Analysis}}
+\newcommand{\VR}{\textit{Vietoris-Rips}}
+\newcommand{\PD}{\textit{Persistence Diagram}}
+\newcommand{\PL}{\textit{Persistence Landscape}}
+
+% Medical terms
+\newcommand{\medOn}{\textit{medOn}\xspace}
+\newcommand{\medOff}{\textit{medOff}\xspace}
+\newcommand{\LFP}{\textit{LFP}\xspace}
+\newcommand{\EEG}{\textit{EEG}\xspace}
+
+% Statistical notation
+\newcommand{\pval}{p\text{-value}}
+\newcommand{\cohend}{Cohen's $d$}
+
+% ============================================================================
+% THEOREM ENVIRONMENTS
+% ============================================================================
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}{Example}[section]
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+% ============================================================================
+% CODE LISTINGS STYLE
+% ============================================================================
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    commentstyle=\color{ForestGreen},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red}
+}
+
+% ============================================================================
+% HEADER AND FOOTER
+% ============================================================================
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\leftmark}
+\lhead{Parkinson's Disease TDA Analysis}
+\cfoot{\thepage}
+
+% ============================================================================
+% DOCUMENT METADATA
+% ============================================================================
+
+\title{Topological Data Analysis of Local Field Potentials in Parkinson's Disease: \\
+\large Distinguishing Medication States Using Persistent Homology}
+
+\author{Your Name}
+
+\date{\today}
+
+% ============================================================================
+% BEGIN DOCUMENT
+% ============================================================================
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report presents a comprehensive analysis of Local Field Potential (LFP) recordings from Parkinson's disease 
+patients using Topological Data Analysis (TDA). We investigate whether topological features extracted from neural
+ signals can distinguish between medication-on (\medOn) and medication-off (\medOff) states across 14 patients. 
+ Using Takens embedding and persistent homology, we extract and compare features including persistence entropy, 
+ persistence landscapes, Betti curves, and heat kernel signatures. Our analysis examines lateralization effects 
+ across hemispheres and differences between resting and active motor states.
+\end{abstract}
+
+\tableofcontents
+
+\newpage
+
+\section{Data and Feature Extraction}
+
+\subsection{Aim and Methodology}
+\label{sec:methodology}
+
+Our aim in this study is to explore the potential of Topological Data Analysis (TDA) in distinguishing between medication-on (\medOn) and medication-off (\medOff) states in Parkinson's disease patients using Local Field Potential (LFP) recordings. We hypothesize that the topological features extracted from these neural signals can provide insights into the effects of medication on brain activity. In the beginning, we aim to find such indicators without using machine learning models, focusing instead on statistical analysis of the extracted topological features. We also limit ourselves to use only a personal laptop for all computations. The specifications of the laptop are as follows: 
+\begin{itemize}
+    \item CPU Model: Intel Core i7-13700HX (13th Gen)
+    \begin{itemize}
+        \item Architecture: x86\_64
+        \item 16 physical cores
+        \item 24 threads (with Hyper-Threading, 2 threads per core)
+        \item Clock Speed: 800 MHz - 2100 MHz
+        \item Vendor: GenuineIntel
+    \end{itemize}
+    \item RAM: 32 GB
+    \item Operating System: CachyOS Linux (Arch Linux based), Rolling release
+    \begin{itemize}
+        \item Kernel: 6.17.7-3-cachyos
+        \item Architecture: x86\_64 GNU/Linux
+    \end{itemize}
+\end{itemize}
+
+Later on the study, if we find promising topological features that can distinguish between \medOn and \medOff states, we may consider employing machine learning models to further validate and enhance our findings, and benefit from HPC (high-performance computing, such as Tubitak's TRUBA). However, the primary focus of this report is on the extraction of topological features and statistical analysis of them. 
+
+Here is an outline of the feature types and our comparison methodology:
+\begin{itemize}
+    \item Scalar Features (Summary Statistics)
+    \begin{itemize}
+        \item \textbf{Feature counts} per homology dimension (H0, H1, H2, H3)
+        \item \textbf{Lifespan statistics:} mean, max, std per dimension
+        \item \textbf{Birth time statistics:} mean per dimension
+        \item \textbf{Death time statistics:} mean per dimension
+        \item \textbf{Persistence Entropy:} single scalar value per diagram
+    \end{itemize}
+\end{itemize}
+
+After running normality tests on these scalar features, we will use either t-tests or Wilcoxon tests to compare the \medOn and \medOff groups. We will report p-values and effect sizes (Cohen's d) for each comparison.
+
+The reamining of feature types and comparison methodologies will be added in the next version of the report.
+
+In order to approach the analysis in a systematic way, we first pooled the extracted features only to distinguish between \medOn and \medOff states, regardless of hemispheres or task types. After that, we focused on lateralization effects (left vs right hemisphere) and task effects (resting state vs hold task). When we were dealing with lateralization effects, we distinguished between left and right hemispheres using the keywords \textit{dominant} and \textit{non-dominant} respectively in the representations due to contralateral control of motor functions by the brain hemispheres. That is, if the patient is right-handed, the left hemisphere is considered dominant and the right hemisphere non-dominant, and vice versa for left-handed patients.
+
+
+
+
+\subsection{Introduction to Data}
+We are using a preprocessed version of the data set described in \cite{rassoulou_exploring_2024}. 
+The data consists of Local Field Potential (LFP) recordings from 14 Parkinson's disease patients,
+collected in both medication-on (\medOn) and medication-off (\medOff) states. Each recording includes signals from both hemispheres of the brain during resting state and active motor tasks. Even though the original experiment has three motor tasks (hold, move and clench), we focus on the resting state and the hold task for this analysis. For the hold task, patients are asked to hold their dominant arms in the air. Both resting state and hold task data are recorded in one session. Each session contains 5 minutes of resting state data followed by multiple trials of the hold task. Between every hold task, patients are given short breaks to rest, and these breaks are marked as bad segments in the data. Each recording is sampled at 2000 Hz, and last around 17 minutes. For computational feasibility, we downsample the data to 100 Hz, applied a bandpass filter between 4 - 48 Hz (in accordance with Nyquist sampling theorem). We also took small segments from the data. To be precise, we extracted 10 seconds from both resting state and hold task data. The portion from the hold task is taken from the first appearance of the hold task after the resting state. In order to prevent edge artifects, we took these 5 seconds segments at the middle of the relative parts. We applied the same process to all 14 patients. Note that, we don not have both \medOn and \medOff data for all patients. The distribution of patients is as follows: 9 patients have both \medOn and \medOff data, 3 patients have only \medOff data, and 2 patients have only \medOn data.
+
+
+
+
+\section{Scalar Features Analysis (Summary Statistics)}
+
+\subsection{Pooled Brain Hemispheres}
+\label{sec:pooled_scalar}
+
+After applying the abovementioned preprocessing steps, we used giotto-tda Python library~\cite{giotto-tda} to extract topological features from each hemisphere of the patients under both medication conditions. We first applied \lstinline|SingleTakensEmbedding()| with \lstinline|parameters_type="search"|, \lstinline|time_delay=50|, \lstinline|dimension=10|, and \lstinline|stride=1|, where \lstinline|time_delay| and \lstinline|dimension| act as an upper bound for the search algorithm. After that, we embedded all the signals into the Euclidean space using the optimal parameters obtained from the search algorithm. Then, we computed the persistent homology of the embedded signals using \lstinline|VietorisRipsPersistence()| function with default parameters. We extracted persistence diagrams up to homology dimension 3 (H0, H1, H2, H3). Finally, we computed the scalar summary statistics from the persistence diagrams as described in Section~\ref{sec:methodology}. First, we examined the pooled data to distinguish between \medOn and \medOff states, regardless of hemispheres or task types. Then, we focused on lateralization effects (left vs right hemisphere) and task effects (resting state vs hold task). Regardless of that, we extracted feature counts, average life spans, maximum life spans, standard deviation of life spans, average birth times, average death times, and persistence entropies from each homology dimension (H0, H1, H2, H3) for all the signals.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./scalar_features/pooled_dist_feat_counts.png}
+    \caption{Distribution of Feature Counts by Homology Dimension for Pooled Data}
+    \label{fig:feat_counts_pooled}
+\end{figure}
+
+\begin{lstlisting}[style=pythonoutput]
+    Feature Count Statistics: MedOn vs MedOff Comparison
+======================================================================
+
+H0 (Connected Components):
+                       MedOn      MedOff     Difference (MedOn - MedOff)
+  --------------------------------------------------------------------
+  Mean                   249.00     249.00       0.00
+  Median                 249.00     249.00       0.00
+  Std                      0.00       0.00       0.00
+  Range                [249, 249]  [249, 249]
+
+H1 (Loops/Cycles):
+                       MedOn      MedOff     Difference (MedOn - MedOff)
+  --------------------------------------------------------------------
+  Mean                   164.70     168.88      -4.17
+  Median                 167.00     167.00       0.00
+  Std                     20.98      18.80       2.18
+  Range                [115, 203]  [135, 225]
+
+H2 (Voids):
+                       MedOn      MedOff     Difference (MedOn - MedOff)
+  --------------------------------------------------------------------
+  Mean                    61.70      65.48      -3.77
+  Median                  60.50      66.50      -6.00
+  Std                     19.91      19.91       0.00
+  Range                [19, 117]  [24, 130]
+
+H3 (3D Voids):
+                       MedOn      MedOff     Difference (MedOn - MedOff)
+  --------------------------------------------------------------------
+  Mean                    12.66      15.60      -2.95
+  Median                  11.50      13.50      -2.00
+  Std                      8.47       9.09      -0.61
+  Range                [2, 50]  [1, 40]
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./scalar_features/pooled_dist_pe.png}
+    \caption{Distribution of Persistence Entropy for Pooled Data}
+    \label{fig:pe_counts_pooled}
+\end{figure}
+
+
+\begin{lstlisting}[style=pythonoutput]
+    Persistence Entropy: MedOn vs MedOff Comparison
+======================================================================
+
+H0:
+  MedOn  - Mean: 7.8927, Std: 0.0267
+  MedOff - Mean: 7.8933, Std: 0.0205
+  Difference: -0.0006
+
+H1:
+  MedOn  - Mean: 6.8864, Std: 0.2021
+  MedOff - Mean: 6.9300, Std: 0.1731
+  Difference: -0.0437
+
+H2:
+  MedOn  - Mean: 5.3681, Std: 0.5390
+  MedOff - Mean: 5.4678, Std: 0.4618
+  Difference: -0.0997
+
+H3:
+  MedOn  - Mean: 2.9160, Std: 0.8767
+  MedOff - Mean: 3.1823, Std: 1.0716
+  Difference: -0.2663
+\end{lstlisting}
+
+
+Examining the distributions and summary statistics of feature counts (Figure~\ref{fig:feat_counts_pooled}) and persistence entropies (Figure~\ref{fig:pe_counts_pooled}) for the pooled data, we observe that there are slight differences between the \medOn and \medOff states across all homology dimensions. Notably, the \medOff state tends to have higher average feature counts and persistence entropies compared to the \medOn state, particularly in higher homology dimensions (H1, H2, H3). These preliminary observations suggest that medication may influence the topological complexity of LFP signals in Parkinson's disease patients. 
+
+Normality was assessed using the Shapiro-Wilk test ($\alpha = 0.05$) 
+applied to three scenarios for each feature: (1) \medOn state
+values, (2) \medOff state values, and (3) paired differences (\medOn - \medOff). For paired statistical testing, the critical assumption is normality of the paired differences. Features with normally distributed differences (p > 0.05) were analyzed using paired t-tests, while features with non-normally distributed differences were analyzed using Wilcoxon signed-rank tests. After the Shapiro-Wilk normality test, we found only h0\_persistence\_entropy feature to be non-normally distributed. Therefore, we applied Wilcoxon signed-rank test for that feature, and paired t-test for the rest of the features.
+
+Features with normally distributed differences were analyzed using two-tailed paired t-tests, while features with non-normally distributed differences were analyzed using two-tailed Wilcoxon signed-rank tests. Effect sizes were quantified using Cohen's d for t-tests and rank-biserial correlation (r) for Wilcoxon tests. Multiple comparison correction was performed using the Benjamini-Hochberg FDR procedure ($\alpha = 0.05$). Here are the results:
+
+\begin{table}[htbp]
+  \centering
+  \caption{Statistical comparison of topological features between medication-on and medication-off states in
+  Parkinson's disease patients (n=9 paired subjects). Features are sorted by p-value.}
+  \label{tab:medOn_medOff_results}
+  \small
+  \begin{tabular}{@{}lllrrrrr@{}}
+  \toprule
+  \textbf{Feature} & \textbf{Test} & \makebox[1.2cm]{\textbf{MedOn}} & \makebox[1.2cm]{\textbf{MedOff}} &
+  \textbf{Diff.} & \textbf{p-value} & \textbf{FDR p} & \textbf{Effect} \\
+   & & \textbf{Mean} & \textbf{Mean} & & & & \textbf{Size} \\
+  \midrule
+  H1 feature count & t-test & 160.97 & 172.92 & $-11.94$ & 0.020$^{*}$ & 0.081 & $-0.970$ \\
+  H1 entropy & t-test & 6.854 & 6.962 & $-0.108$ & 0.029$^{*}$ & 0.081 & $-0.887$ \\
+  H3 feature count & t-test & 11.33 & 16.36 & $-5.03$ & 0.029$^{*}$ & 0.081 & $-0.887$ \\
+  H2 feature count & t-test & 57.72 & 68.17 & $-10.44$ & 0.031$^{*}$ & 0.081 & $-0.868$ \\
+  H3 entropy & t-test & 2.774 & 3.251 & $-0.477$ & 0.034$^{*}$ & 0.081 & $-0.853$ \\
+  H2 entropy & t-test & 5.273 & 5.520 & $-0.247$ & 0.064 & 0.129 & $-0.715$ \\
+  H3 avg. lifespan & t-test & 0.073 & 0.083 & $-0.009$ & 0.104 & 0.179 & $-0.611$ \\
+  H1 avg. lifespan & t-test & 0.308 & 0.294 & 0.015 & 0.617 & 0.925 & 0.174 \\
+  H0 entropy & Wilcoxon & 7.890 & 7.894 & $-0.004$ & 0.820 & 1.000 & --- \\
+  H2 avg. lifespan & t-test & 0.137 & 0.134 & 0.002 & 0.865 & 1.000 & 0.059 \\
+  H0 avg. lifespan & t-test & 2.202 & 2.192 & 0.010 & 0.960 & 1.000 & 0.017 \\
+  H0 feature count & t-test & 249.00 & 249.00 & 0.000 & 1.000 & 1.000 & 0.000 \\
+  \bottomrule
+  \multicolumn{8}{@{}l}{\footnotesize $^{*}$Significant before FDR correction (p < 0.05); no features
+  significant after correction.} \\
+  \multicolumn{8}{@{}l}{\footnotesize Effect size: Cohen's d for t-tests, rank-biserial r for Wilcoxon (shown
+   as ---).} \\
+  \multicolumn{8}{@{}l}{\footnotesize FDR p: False Discovery Rate corrected p-value (Benjamini-Hochberg, $\alpha =
+  0.05$).} \\
+  \end{tabular}
+  \end{table}
+
+  As it can be seen from the Table~\ref{tab:medOn_medOff_results}, four features were significantly different between \medOn and \medOff states before FDR correction: H1 feature count, H1 persistence entropy, H3 feature count, and H2 feature count. All these features showed higher values in the \medOff state compared to the \medOn state, suggesting increased topological complexity when medication is off. However, none of the features remained significant after FDR correction for multiple comparisons. Effect sizes for the significant features were large (Cohen's d > 0.8), indicating substantial differences despite the lack of statistical significance after correction. These findings suggest that while there are trends towards differences in topological features between medication states, larger sample sizes may be needed to confirm these effects robustly.
+
+
+
+  \subsection{Brain Hemisphere-Specific Analysis}
+  \label{sec:hemisphere_scalar}
+
+
+
+Even though the analyses in Section~\ref{sec:pooled_scalar} showed some trends towards differences in topological features between \medOn and \medOff states, these effects were not statistically significant after correcting for multiple comparisons. One potential reason for this lack of significance could be the pooling of data across both brain hemispheres, which may obscure lateralized effects of medication on neural activity. To address this, we conducted hemisphere-specific analyses to investigate whether topological features differ between \medOn and \medOff states within each hemisphere separately. By analyzing the left and right hemispheres independently, we aimed to uncover any lateralized effects of medication that may have been masked in the pooled analysis. This approach allows us to better understand how medication influences the topological structure of neural signals in each hemisphere, potentially revealing more nuanced effects of treatment in Parkinson. As we already indicated in Section~\ref{sec:methodology}, we used the keywords \textit{dominant} and \textit{non-dominant} to distinguish between left and right hemispheres due to contralateral control of motor functions by the brain hemispheres. That is, if the patient is right-handed, the left hemisphere is considered dominant and the right hemisphere non-dominant, and vice versa for left-handed patients. 
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./scalar_features/sep_dist_feat_counts.png}
+    \caption{Distribution of Feature Counts by Homology Dimension for Hemisphere-Specific Data}
+    \label{fig:feat_counts_sep}
+\end{figure}
+
+
+\begin{lstlisting}[style=pythonoutput]
+    Feature Count Statistics: Hemisphere-Specific MedOn vs MedOff Comparison
+======================================================================
+
+H0 (Connected Components):
+  Hemisphere      Med State  Mean       Std        Median    
+  -------------------------------------------------------
+  Dominant        MedOn      249.00     0.00       249.00    
+  Dominant        MedOff     249.00     0.00       249.00    
+  Dominant        Difference 0.00      
+  -------------------------------------------------------
+  Nondominant     MedOn      249.00     0.00       249.00    
+  Nondominant     MedOff     249.00     0.00       249.00    
+  Nondominant     Difference 0.00      
+
+  - Medication effect difference (Dominant - Nondominant): 0.00
+
+H1 (Loops/Cycles):
+  Hemisphere      Med State  Mean       Std        Median    
+  -------------------------------------------------------
+  Dominant        MedOn      164.73     17.63      167.00    
+  Dominant        MedOff     166.62     16.98      167.00    
+  Dominant        Difference -1.90     
+  -------------------------------------------------------
+  Nondominant     MedOn      164.68     24.29      163.00    
+  Nondominant     MedOff     171.12     20.58      168.50    
+  Nondominant     Difference -6.44     
+
+  - Medication effect difference (Dominant - Nondominant): 4.55
+
+H2 (Voids):
+  Hemisphere      Med State  Mean       Std        Median    
+  -------------------------------------------------------
+  Dominant        MedOn      59.91      16.27      61.50     
+  Dominant        MedOff     61.25      17.82      63.50     
+  Dominant        Difference -1.34     
+  -------------------------------------------------------
+  Nondominant     MedOn      63.50      23.25      59.50     
+  Nondominant     MedOff     69.71      21.34      70.00     
+  Nondominant     Difference -6.21     
+
+  - Medication effect difference (Dominant - Nondominant): 4.87
+
+H3 (3D Voids):
+  Hemisphere      Med State  Mean       Std        Median    
+  -------------------------------------------------------
+  Dominant        MedOn      11.41      4.56       12.50     
+  Dominant        MedOff     14.33      9.31       13.00     
+  Dominant        Difference -2.92     
+  -------------------------------------------------------
+  Nondominant     MedOn      13.91      11.09      10.50     
+  Nondominant     MedOff     16.88      8.86       13.50     
+  Nondominant     Difference -2.97     
+
+  - Medication effect difference (Dominant - Nondominant): 0.04
+\end{lstlisting}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./scalar_features/sep_dist_pe.png}
+    \caption{Distribution of Persistence Entropy for Hemisphere-Specific Data}
+    \label{fig:pe_counts_sep}
+\end{figure}
+
+
+\begin{lstlisting}[style=pythonoutput]
+    Persistence Entropy: MedOn vs MedOff by Hemisphere
+======================================================================
+
+H0:
+  DOMINANT Hemisphere:
+    MedOn  - Mean: 7.8929, Std: 0.0166
+    MedOff - Mean: 7.8869, Std: 0.0227
+    Difference: 0.0059
+  NONDOMINANT Hemisphere:
+    MedOn  - Mean: 7.8924, Std: 0.0344
+    MedOff - Mean: 7.8996, Std: 0.0163
+    Difference: -0.0071
+
+H1:
+  DOMINANT Hemisphere:
+    MedOn  - Mean: 6.9008, Std: 0.1628
+    MedOff - Mean: 6.9016, Std: 0.1517
+    Difference: -0.0008
+  NONDOMINANT Hemisphere:
+    MedOn  - Mean: 6.8720, Std: 0.2382
+    MedOff - Mean: 6.9585, Std: 0.1912
+    Difference: -0.0865
+
+H2:
+  DOMINANT Hemisphere:
+    MedOn  - Mean: 5.3783, Std: 0.4071
+    MedOff - Mean: 5.3625, Std: 0.4801
+    Difference: 0.0158
+  NONDOMINANT Hemisphere:
+    MedOn  - Mean: 5.3579, Std: 0.6550
+    MedOff - Mean: 5.5732, Std: 0.4267
+    Difference: -0.2153
+
+H3:
+  DOMINANT Hemisphere:
+    MedOn  - Mean: 2.8395, Std: 0.7610
+    MedOff - Mean: 2.9622, Std: 1.2328
+    Difference: -0.1227
+  NONDOMINANT Hemisphere:
+    MedOn  - Mean: 2.9925, Std: 0.9912
+    MedOff - Mean: 3.4023, Std: 0.8519
+    Difference: -0.4099
+\end{lstlisting}
+
+
+From the hemisphere-specific analysis, we observe that the non-dominant hemisphere shows more pronounced differences between \medOn and \medOff states compared to the dominant hemisphere. Notably, in the non-dominant hemisphere, features such as H1 feature count and H1 persistence entropy exhibit larger differences between medication states (Figure~\ref{fig:feat_counts_sep} and Figure~\ref{fig:pe_counts_sep}). This suggests that medication effects may be more lateralized than previously detected in the pooled analysis. The dominant hemisphere shows relatively smaller differences, indicating that medication may have a more substantial impact on the topological structure of neural signals in the non-dominant hemisphere. These findings highlight the importance of considering hemispheric differences when analyzing the effects of medication on brain activity in Parkinson's disease patients.
+
+Upon applying the Shapiro-Wilk normality test to the hemisphere-specific data, h1\_avg\_lifespan feature for the dominant hemisphere, and h1 and h2\_avg\_lifespan, and h0\_persistence\_entropy features for the non-dominant hemisphere were found to be non-normally distributed. Therefore, we applied Wilcoxon signed-rank test for these features, and paired t-test for the rest of the features.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Hemisphere-specific comparison of topological
+  features between medication-on and medication-off states
+  in Parkinson's disease patients (n=9 paired subjects).
+  Results sorted by p-value. FDR correction applied across
+  all 24 tests (12 features × 2 hemispheres).}
+  \label{tab:hemisphere_results}
+  \footnotesize
+  \begin{tabular}{@{}llllrrrrrl@{}}
+  \toprule
+  \textbf{Feature} & \textbf{Hem.} & \textbf{Test} &
+  \textbf{MedOn} & \textbf{MedOff} & \textbf{Diff.} &
+  \textbf{p} & \textbf{FDR p} & \textbf{Effect} &
+  \textbf{Sig.} \\
+  & & & \textbf{Mean} & \textbf{Mean} & & & & &
+  \textbf{(uncorr)} \\
+  \midrule
+  H3 entropy & ND & t-test & 2.736 & 3.569 & $-0.833$ &
+  0.006$^{*}$ & 0.151 & $-1.224$ & \\
+  H3 avg. lifespan & ND & t-test & 0.067 & 0.083 & $-0.016$
+   & 0.024$^{*}$ & 0.194 & $-0.928$ & \\
+  H1 entropy & ND & t-test & 6.814 & 7.009 & $-0.195$ &
+  0.024$^{*}$ & 0.194 & $-0.924$ & \\
+  H1 feature count & ND & t-test & 158.56 & 176.78 &
+  $-18.22$ & 0.043$^{*}$ & 0.239 & $-0.799$ & \\
+  H2 entropy & ND & t-test & 5.234 & 5.662 & $-0.427$ &
+  0.053 & 0.239 & $-0.756$ & \\
+  H2 feature count & ND & t-test & 58.22 & 74.28 & $-16.06$
+   & 0.060 & 0.239 & $-0.731$ & \\
+  H3 feature count & ND & t-test & 11.44 & 18.33 & $-6.89$
+  & 0.080 & 0.274 & $-0.668$ & \\
+  H3 feature count & D & t-test & 11.22 & 14.39 & $-3.17$ &
+   0.281 & 0.842 & $-0.386$ & \\
+  H1 feature count & D & t-test & 163.39 & 169.06 & $-5.67$
+   & 0.335 & 0.892 & $-0.342$ & \\
+  H2 feature count & D & t-test & 57.22 & 62.06 & $-4.83$ &
+   0.380 & 0.913 & $-0.310$ & \\
+  H2 avg. lifespan & ND & Wilcoxon & 0.130 & 0.133 &
+  $-0.003$ & 0.426 & 0.929 & $-0.265$ & \\
+  H0 entropy & D & t-test & 7.892 & 7.888 & 0.004 & 0.597 &
+   1.000 & 0.184 & \\
+  H2 avg. lifespan & D & t-test & 0.143 & 0.136 & 0.008 &
+  0.605 & 1.000 & 0.179 & \\
+  H2 entropy & D & t-test & 5.313 & 5.379 & $-0.066$ &
+  0.624 & 1.000 & $-0.170$ & \\
+  H1 entropy & D & t-test & 6.893 & 6.914 & $-0.021$ &
+  0.669 & 1.000 & $-0.148$ & \\
+  H3 avg. lifespan & D & t-test & 0.080 & 0.082 & $-0.003$
+  & 0.711 & 1.000 & $-0.128$ & \\
+  H0 entropy & ND & Wilcoxon & 7.888 & 7.900 & $-0.011$ &
+  0.734 & 1.000 & $-0.113$ & \\
+  H3 entropy & D & t-test & 2.811 & 2.932 & $-0.122$ &
+  0.759 & 1.000 & $-0.106$ & \\
+  H1 avg. lifespan & ND & Wilcoxon & 0.301 & 0.285 & 0.015
+  & 0.820 & 1.000 & $-0.076$ & \\
+  H0 avg. lifespan & D & t-test & 2.269 & 2.235 & 0.033 &
+  0.882 & 1.000 & 0.051 & \\
+  H1 avg. lifespan & D & Wilcoxon & 0.316 & 0.302 & 0.014 &
+   0.910 & 1.000 & 0.038 & \\
+  H0 avg. lifespan & ND & t-test & 2.135 & 2.150 & $-0.014$
+   & 0.964 & 1.000 & $-0.015$ & \\
+  H0 feature count & ND & t-test & 249.00 & 249.00 & 0.000
+  & 1.000 & 1.000 & 0.000 & \\
+  H0 feature count & D & t-test & 249.00 & 249.00 & 0.000 &
+   1.000 & 1.000 & 0.000 & \\
+  \bottomrule
+  \multicolumn{9}{@{}l}{\footnotesize D = Dominant
+  hemisphere; ND = Nondominant hemisphere.} \\
+  \multicolumn{9}{@{}l}{\footnotesize $^{*}$Significant
+  before FDR correction (p < 0.05); no features significant
+   after correction.} \\
+  \multicolumn{9}{@{}l}{\footnotesize Effect size: Cohen's
+  d for t-tests, rank-biserial r for Wilcoxon.} \\
+  \multicolumn{9}{@{}l}{\footnotesize FDR correction:
+  Benjamini-Hochberg method across 24 tests ($\alpha = 0.05$).} \\
+  \end{tabular}
+  \end{table}
+
+
+
+
+
+\newpage
+\bibliography{/home/ilgazc/Data/Parkinson_medOn_medOff/Report/references}
+\end{document}
